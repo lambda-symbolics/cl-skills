@@ -8,6 +8,7 @@
           (sb-posix:getpid)
           (random most-positive-fixnum)))
 
+(-> skill--agent-native-source (string string string) string)
 (defun skill--agent-native-source (name description instructions)
   "Return one generated native skill form preserving INSTRUCTIONS exactly."
   (let ((*print-pretty* nil)

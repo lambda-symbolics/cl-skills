@@ -51,6 +51,8 @@
    #:skill-metadata-root
    #:skill-metadata-root-index
    #:skill-metadata-source-format
+   #:skill-error
+   #:skill-error-message
    #:skill-read-error
    #:skill-read-error-cause
    #:skill-read-error-pathname

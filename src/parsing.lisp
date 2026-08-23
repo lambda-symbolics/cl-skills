@@ -89,7 +89,7 @@ stall discovery."
                        (setf *skill-definition-source-character-count*
                              character-limit)
                        (let* ((buffer (make-string (1+ character-limit)))
-                              (count (read-character-sequence buffer stream)))
+                              (count (read-sequence buffer stream)))
                          (setf *skill-definition-source-character-count* count)
                          (when (> count character-limit)
                            (skill--definition-fail
@@ -555,5 +555,3 @@ COMMON-LISP from the reader package keeps a bare symbol from naming anything."
                instructions
                instruction-character-limit
                :allow-empty-p t)))))
-
-(-> skill--agent-native-source (string string string) string)
