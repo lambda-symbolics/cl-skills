@@ -345,8 +345,8 @@ COMMON-LISP from the reader package keeps a bare symbol from naming anything."
   '("name" "description" "license" "compatibility" "metadata" "allowed-tools")
   "The complete top-level YAML field vocabulary accepted from SKILL.md.")
 
-(-> skill--agent-source-digest (string) string)
-(defun skill--agent-source-digest (source)
+(-> skill-source-digest (string) string)
+(defun skill-source-digest (source)
   "Return the lowercase SHA-256 digest of SOURCE's exact UTF-8 bytes."
   (string-downcase
    (with-output-to-string (stream)

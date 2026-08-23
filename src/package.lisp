@@ -54,9 +54,11 @@
    #:skill-read-error
    #:skill-read-error-cause
    #:skill-read-error-pathname
+   #:skill-source-digest
    #:skill-source-format
    #:skill-source-format-for-pathname
-   #:skill-source-pathname-p))
+   #:skill-source-pathname-p
+   #:skill-standard-cache-pathname))
 
 (in-package #:cl-skills)
 
