@@ -1,0 +1,8 @@
+#+title: cl-skills
+
+Portable Common Lisp support for discovering, validating, reading, and caching
+standard Agent Skills and native Skill definitions.
+
+* License
+
+COLL-Attribution, copyright 2026 Lambda Symbolics OÜ. See =LICENSE.lisp=.
