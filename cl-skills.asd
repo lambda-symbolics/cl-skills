@@ -7,6 +7,7 @@
   :depends-on (#:ironclad/digest/sha256
                #:nyaml
                #:sb-posix
+               #:sexp-config
                #:serapeum)
   :components ((:module "src"
                 :serial t

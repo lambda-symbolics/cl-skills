@@ -2,6 +2,14 @@
   (:use #:cl)
   (:import-from #:ironclad
                 #:digest-sequence)
+  (:import-from #:sexp-config
+                #:make-source-grammar
+                #:read-source
+                #:sexp-config-error
+                #:sexp-config-error-kind
+                #:sexp-config-error-message
+                #:source-grammar
+                #:validate-tree)
   (:import-from #:serapeum
                 #:->)
   (:export
