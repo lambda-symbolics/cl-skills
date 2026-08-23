@@ -1,8 +1,107 @@
 #+title: cl-skills
 
-Portable Common Lisp support for discovering, validating, reading, and caching
-standard Agent Skills and native Skill definitions.
+=cl-skills= discovers, validates, catalogs, and reads reusable agent Skills. It
+supports the standard [[https://agentskills.io/specification][Agent Skills]] =SKILL.md= format and a bounded native
+=SKILL.sexp= representation. Discovery retains metadata only. Instruction
+bodies are read from the selected source on demand.
+
+The implementation targets SBCL on POSIX systems. Filesystem traversal is
+bounded, source files must remain regular and root-confined while opened, and
+symbolic-link cycles do not cause repeated traversal.
+
+* Loading
+
+With the system available to ASDF:
+
+#+begin_src lisp
+(asdf:load-system "cl-skills")
+#+end_src
+
+The library depends on Ironclad, NYAML, sexp-config, Serapeum, UIOP, and the
+SBCL =sb-posix= contrib.
+
+* Discovering and reading Skills
+
+Roots are ordered. An earlier root wins when several definitions use the same
+name. A native =SKILL.sexp= wins over =SKILL.md= in the same directory.
+
+#+begin_src lisp
+(let* ((catalog
+         (cl-skills:skill-catalog-discover
+          (list #P"/home/user/.config/my-agent/skills/"
+                #P"/usr/local/share/my-agent/skills/")
+          :cache-root #P"/home/user/.cache/my-agent/"))
+       (skill (cl-skills:skill-catalog-find catalog "release-notes")))
+  (when skill
+    (format t "~A~%" (cl-skills:skill-metadata-description skill))
+    (write-string (cl-skills:skill-metadata-read skill))))
+#+end_src
+
+=SKILL-CATALOG-DIAGNOSTICS= returns non-fatal scan, validation, shadowing, and
+limit outcomes. Each diagnostic has =KIND=, =PATHNAME=, =ROOT-INDEX=, and
+=MESSAGE= readers. Selected-source failures signal =SKILL-READ-ERROR= or its
+=SKILL-BODY-TOO-LARGE= subtype.
+
+=SKILL-CATALOG-RENDER= produces a provider-neutral, character-bounded catalog
+containing names, descriptions, and source paths, but no instruction bodies.
+It returns the rendered text, included count, and omitted count.
+
+* Source formats
+
+A standard Skill is an exact case-sensitive =SKILL.md= file. It must begin
+with YAML frontmatter bounded by exact =---= lines. =name= and =description=
+are required. The optional standard fields are =license=, =compatibility=,
+=metadata=, and =allowed-tools=. Unknown and duplicate fields are rejected.
+The name must satisfy the Agent Skills naming rules and match its parent
+directory. The Markdown body is preserved exactly and may be empty.
+
+The native format is an exact case-sensitive =SKILL.sexp= file containing one
+data-only form:
+
+#+begin_src lisp
+(:autolith-skill
+ :version 1
+ :name "release-notes"
+ :description "Prepare concise release notes."
+ :instructions "Read the changelog and summarize user-visible changes.")
+#+end_src
+
+Native forms reject reader evaluation, unknown or duplicate fields, improper
+structure, excess depth, and excess node count.
+
+* Conversion cache
+
+When =:CACHE-ROOT= is supplied, each validated =SKILL.md= is converted to a
+content-addressed native cache:
+
+#+begin_example
+<CACHE-ROOT>/skills/agent-skill-v1/<source-sha256>/
+  SKILL.sexp
+  manifest.sha256
+#+end_example
+
+The SHA-256 key covers the exact UTF-8 source. The manifest binds the source
+digest to the generated native content. Cache files are published through
+same-directory atomic replacement, validated before use, and regenerated from
+the standard source when missing, malformed, or corrupt. A changed source uses
+a new cache directory.
+
+* Bounds
+
+The exported =*SKILL-...-LIMIT*= parameters control traversal depth,
+directories, entries, per-file characters, aggregate discovery characters,
+structural native-form complexity, selected instruction size, and rendered
+catalog size. Applications may bind them around discovery or selected reads.
+
+* Development
+
+#+begin_src sh
+./script/bootstrap
+./script/check
+#+end_src
 
 * License
 
-COLL-Attribution, copyright 2026 Lambda Symbolics OÜ. See =LICENSE.lisp=.
+Copyright 2026 Lambda Symbolics OÜ
+
+Licensed under COLL-Attribution. See =LICENSE.lisp= for the authoritative terms.
