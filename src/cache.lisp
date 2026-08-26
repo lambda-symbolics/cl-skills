@@ -62,9 +62,9 @@
                                    :external-format ':utf-8)
              (write-string content stream)
              (finish-output stream))
-           (sb-posix:chmod (namestring temporary) #o600)
+           (sb-posix:chmod (sb-ext:native-namestring temporary) #o600)
            (uiop:rename-file-overwriting-target temporary pathname)
-           (sb-posix:chmod (namestring pathname) #o600)
+           (sb-posix:chmod (sb-ext:native-namestring pathname) #o600)
            pathname)
       (when (probe-file temporary)
         (ignore-errors (delete-file temporary))))))
@@ -90,14 +90,14 @@
           (skill--read-file-bounded
            pathname
            *skill-agent-cache-character-limit*
-           :root cache-root)
+           :roots (list cache-root))
         (declare (ignore canonical-pathname device inode))
         (multiple-value-bind
               (manifest-source manifest-canonical manifest-device manifest-inode)
             (skill--read-file-bounded
              (skill--agent-cache-manifest-pathname pathname)
              256
-             :root cache-root)
+             :roots (list cache-root))
           (declare (ignore manifest-canonical manifest-device manifest-inode))
           (unless (string=
                    manifest-source
@@ -120,7 +120,7 @@
     (pathname
      &key (:instruction-character-limit (integer 1))
           (:file-character-limit (integer 1))
-          (:root (option pathname))
+          (:roots list)
           (:cache-root (option pathname)))
     (values string string string pathname (integer 0)))
 (defun skill--parse-agent-definition
@@ -128,12 +128,12 @@
      &key
        (instruction-character-limit *skill-instruction-character-limit*)
        (file-character-limit *skill-file-character-limit*)
-       root
+       roots
        cache-root)
   "Read SKILL.md and use its content-addressed native conversion cache."
   (let ((*skill-definition-source-character-count* 0))
     (multiple-value-bind (source canonical-pathname device inode)
-        (skill--read-file-bounded pathname file-character-limit :root root)
+        (skill--read-file-bounded pathname file-character-limit :roots roots)
       (declare (ignore device inode))
       (let* ((source-character-count
                *skill-definition-source-character-count*)
@@ -185,6 +185,6 @@
     (pathname
      &key (:instruction-character-limit (integer 1))
           (:file-character-limit (integer 1))
-          (:root (option pathname))
+          (:roots list)
           (:cache-root (option pathname)))
     (values string string string pathname (integer 0)))

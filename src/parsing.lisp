@@ -11,26 +11,28 @@
          :message (apply #'format nil control arguments)))
 
 (-> skill--read-file-bounded
-    (pathname (integer 1) &key (:root (option pathname)))
+    (pathname (integer 1) &key (:roots list))
     (values string pathname (integer 0) (integer 0)))
-(defun skill--read-file-bounded (pathname character-limit &key root)
+(defun skill--read-file-bounded (pathname character-limit &key roots)
   "Read one root-confined regular PATHNAME with a stable filesystem identity.
 
 Return the bounded UTF-8 source, canonical pathname, device, and inode. Opening
 uses a nonblocking descriptor so a FIFO or other non-regular candidate cannot
-stall discovery."
+stall discovery. When ROOTS is non-NIL, the file must resolve beneath one of
+those configured roots."
   (handler-case
       (let* ((canonical (truename pathname))
-             (canonical-root
-               (and root
-                    (uiop:ensure-directory-pathname (truename root)))))
-        (when (and canonical-root
+             (canonical-roots (skill--canonical-roots roots)))
+        (when (and roots
                    (not
-                    (skill--canonical-subpath-p canonical canonical-root)))
+                    (skill--canonical-pathname-confined-p
+                     canonical
+                     canonical-roots)))
           (skill--definition-fail
            :outside-root
-           "The skill source resolves outside its canonical root."))
-        (let* ((expected-status (sb-posix:stat (namestring pathname)))
+           "The skill source resolves outside its configured canonical roots."))
+        (let* ((expected-status
+                 (sb-posix:stat (sb-ext:native-namestring pathname)))
                (expected-mode (sb-posix:stat-mode expected-status))
                (expected-device (sb-posix:stat-dev expected-status))
                (expected-inode (sb-posix:stat-ino expected-status))
@@ -40,18 +42,19 @@ stall discovery."
              :not-regular-file
              "The skill source must resolve to a regular file."))
           (unwind-protect
-               (progn
-                 (setf descriptor
-                       (sb-posix:open
-                        (namestring pathname)
-                        (logior sb-posix:o-rdonly sb-posix:o-nonblock)))
-                 (let* ((opened-status (sb-posix:fstat descriptor))
-                        (opened-mode (sb-posix:stat-mode opened-status))
-                        (opened-device (sb-posix:stat-dev opened-status))
-                        (opened-inode (sb-posix:stat-ino opened-status))
-                        (current-canonical (truename pathname))
-                        (current-status
-                          (sb-posix:stat (namestring pathname))))
+                (progn
+                  (setf descriptor
+                        (sb-posix:open
+                         (sb-ext:native-namestring pathname)
+                         (logior sb-posix:o-rdonly sb-posix:o-nonblock)))
+                  (let* ((opened-status (sb-posix:fstat descriptor))
+                         (opened-mode (sb-posix:stat-mode opened-status))
+                         (opened-device (sb-posix:stat-dev opened-status))
+                         (opened-inode (sb-posix:stat-ino opened-status))
+                         (current-canonical (truename pathname))
+                         (current-status
+                           (sb-posix:stat
+                            (sb-ext:native-namestring pathname))))
                    (unless (sb-posix:s-isreg opened-mode)
                      (skill--definition-fail
                       :not-regular-file
@@ -65,14 +68,14 @@ stall discovery."
                      (skill--definition-fail
                       :identity-changed
                       "The skill source changed identity while it was being opened."))
-                   (when (and canonical-root
-                              (not
-                               (skill--canonical-subpath-p
-                                current-canonical
-                                canonical-root)))
-                     (skill--definition-fail
-                      :outside-root
-                      "The skill source resolves outside its canonical root."))
+                    (when (and roots
+                               (not
+                                (skill--canonical-pathname-confined-p
+                                 current-canonical
+                                 canonical-roots)))
+                      (skill--definition-fail
+                       :outside-root
+                       "The skill source resolves outside its configured canonical roots."))
                    (let ((stream
                            (sb-sys:make-fd-stream
                             descriptor
@@ -309,7 +312,7 @@ COMMON-LISP from the reader package keeps a bare symbol from naming anything."
 (-> skill--parse-definition
     (pathname &key (:instruction-character-limit (integer 1))
                    (:file-character-limit (integer 1))
-                   (:root (option pathname))
+                   (:roots list)
                    (:allow-empty-instructions-p boolean))
     (values string string string pathname (integer 0)))
 (defun skill--parse-definition
@@ -317,7 +320,7 @@ COMMON-LISP from the reader package keeps a bare symbol from naming anything."
      &key
        (instruction-character-limit *skill-instruction-character-limit*)
        (file-character-limit *skill-file-character-limit*)
-       root
+       roots
        allow-empty-instructions-p)
   "Read and validate PATHNAME as one native Autolith skill definition."
   (let ((*skill-definition-source-character-count* 0))
@@ -325,7 +328,7 @@ COMMON-LISP from the reader package keeps a bare symbol from naming anything."
         (skill--read-file-bounded
          pathname
          file-character-limit
-         :root root)
+         :roots roots)
       (declare (ignore device inode))
       (multiple-value-bind (name description instructions)
           (skill--parse-native-source

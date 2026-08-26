@@ -5,7 +5,7 @@
      &key
        (instruction-character-limit *skill-instruction-character-limit*)
        (file-character-limit *skill-file-character-limit*)
-       root
+       roots
        cache-root)
   "Read PATHNAME according to its exact supported skill source format."
   (ecase (skill-source-format-for-pathname pathname)
@@ -14,19 +14,20 @@
       pathname
       :instruction-character-limit instruction-character-limit
       :file-character-limit file-character-limit
-      :root root))
+      :roots roots))
     (:agent-skill
      (skill--parse-agent-definition
       pathname
       :instruction-character-limit instruction-character-limit
       :file-character-limit file-character-limit
-      :root root
+      :roots roots
       :cache-root cache-root))))
 
 (-> skill--load-metadata
     (pathname pathname (integer 0)
      &key (:file-character-limit (integer 1))
           (:aggregate-limit-p boolean)
+          (:confinement-roots list)
           (:cache-root (option pathname)))
     (values (option skill-metadata)
             (option skill-diagnostic)
@@ -36,6 +37,7 @@
      &key
        (file-character-limit *skill-file-character-limit*)
        aggregate-limit-p
+       confinement-roots
        cache-root)
   "Return metadata or one typed diagnostic for PATHNAME."
   (handler-case
@@ -47,7 +49,7 @@
              pathname
              :instruction-character-limit *skill-file-character-limit*
              :file-character-limit file-character-limit
-             :root root
+             :roots confinement-roots
              :cache-root cache-root)
           (declare (ignore instructions))
           (values
@@ -57,6 +59,7 @@
                           :pathname pathname
                           :canonical-pathname canonical-pathname
                           :root root
+                          :confinement-roots confinement-roots
                           :root-index root-index
                           :source-format source-format
                           :cache-root
@@ -104,17 +107,18 @@
        (max-characters *skill-discovery-character-limit*)
        cache-root)
   "Discover skills beneath ordered ROOTS, with earlier roots taking precedence."
-  (let ((skills nil)
+  (let ((roots (mapcar (lambda (root)
+                         (uiop:ensure-directory-pathname (pathname root)))
+                       roots))
+        (skills nil)
         (diagnostics nil)
         (reserved (make-hash-table :test #'equal))
         (remaining-directories max-directories)
         (remaining-entries max-entries)
         (remaining-characters max-characters)
         (character-budget-exhausted-p nil))
-    (loop for root-designator in roots
+    (loop for root in roots
           for root-index from 0
-          for root = (uiop:ensure-directory-pathname
-                      (pathname root-designator))
           do
              (when (or (zerop remaining-directories)
                        (zerop remaining-entries)
@@ -135,76 +139,78 @@
                  "The aggregate skill discovery budget was exhausted before this root.")
                 diagnostics)
                (loop-finish))
-             (multiple-value-bind
-                   (pathnames scan-diagnostics directories entries)
-                 (skill--scan-root
-                  root
-                  root-index
-                  :max-depth max-depth
-                  :max-directories remaining-directories
-                  :max-entries remaining-entries)
-               (decf remaining-directories directories)
-               (decf remaining-entries entries)
-               (dolist (diagnostic scan-diagnostics)
-                 (push diagnostic diagnostics))
-               (dolist (pathname pathnames)
-                 (when (zerop remaining-characters)
-                   (push
-                    (skill--diagnostic
-                     :kind ':scan-character-limit
-                     :pathname pathname
-                     :root-index root-index
-                     :message
-                     "The aggregate skill discovery character budget was exhausted.")
-                    diagnostics)
-                   (setf character-budget-exhausted-p t)
-                   (loop-finish))
-                 (let ((file-character-limit
-                         (min *skill-file-character-limit*
-                              remaining-characters)))
-                   (multiple-value-bind
-                         (metadata diagnostic source-character-count)
-                       (skill--load-metadata
-                        pathname
-                        root
-                        root-index
+              (multiple-value-bind
+                    (pathnames scan-diagnostics directories entries)
+                  (skill--scan-root
+                   root
+                   root-index
+                   :max-depth max-depth
+                   :max-directories remaining-directories
+                   :max-entries remaining-entries
+                   :confinement-roots roots)
+                (decf remaining-directories directories)
+                (decf remaining-entries entries)
+                (dolist (diagnostic scan-diagnostics)
+                  (push diagnostic diagnostics))
+                (dolist (pathname pathnames)
+                  (when (zerop remaining-characters)
+                    (push
+                     (skill--diagnostic
+                      :kind ':scan-character-limit
+                      :pathname pathname
+                      :root-index root-index
+                      :message
+                      "The aggregate skill discovery character budget was exhausted.")
+                     diagnostics)
+                    (setf character-budget-exhausted-p t)
+                    (loop-finish))
+                  (let ((file-character-limit
+                          (min *skill-file-character-limit*
+                               remaining-characters)))
+                    (multiple-value-bind
+                          (metadata diagnostic source-character-count)
+                        (skill--load-metadata
+                         pathname
+                         root
+                         root-index
                          :file-character-limit file-character-limit
                          :aggregate-limit-p
                          (<= remaining-characters
                              *skill-file-character-limit*)
+                         :confinement-roots roots
                          :cache-root cache-root)
-                     (decf remaining-characters
-                           (min remaining-characters
-                                source-character-count))
-                     (when (and diagnostic
-                                (eq
-                                 (skill-diagnostic-kind diagnostic)
-                                 ':scan-character-limit))
-                       (setf character-budget-exhausted-p t))
-                     (cond
-                       (diagnostic
-                        (push diagnostic diagnostics))
-                       ((gethash (skill-metadata-name metadata) reserved)
-                        (push
-                         (skill--diagnostic
-                          :kind ':shadowed
-                          :pathname pathname
-                          :root-index root-index
-                          :message
-                          (format nil
-                                  "Skill ~A is blocked by earlier ~A."
-                                  (skill-metadata-name metadata)
-                                  (namestring
-                                   (gethash
-                                    (skill-metadata-name metadata)
-                                    reserved))))
-                         diagnostics))
-                       (t
-                        (setf (gethash (skill-metadata-name metadata) reserved)
-                              pathname)
-                        (push metadata skills))))))
-               (when character-budget-exhausted-p
-                 (loop-finish))))
+                      (decf remaining-characters
+                            (min remaining-characters
+                                 source-character-count))
+                      (when (and diagnostic
+                                 (eq
+                                  (skill-diagnostic-kind diagnostic)
+                                  ':scan-character-limit))
+                        (setf character-budget-exhausted-p t))
+                      (cond
+                        (diagnostic
+                         (push diagnostic diagnostics))
+                        ((gethash (skill-metadata-name metadata) reserved)
+                         (push
+                          (skill--diagnostic
+                           :kind ':shadowed
+                           :pathname pathname
+                           :root-index root-index
+                           :message
+                           (format nil
+                                   "Skill ~A is blocked by earlier ~A."
+                                   (skill-metadata-name metadata)
+                                   (namestring
+                                    (gethash
+                                     (skill-metadata-name metadata)
+                                     reserved))))
+                          diagnostics))
+                        (t
+                         (setf (gethash (skill-metadata-name metadata) reserved)
+                               pathname)
+                         (push metadata skills))))))
+                (when character-budget-exhausted-p
+                  (loop-finish))))
     (make-instance 'skill-catalog
                    :skills (nreverse skills)
                    :diagnostics (nreverse diagnostics))))
@@ -227,7 +233,7 @@
                source-character-count)
             (skill--parse-source-definition
              pathname
-             :root (skill-metadata-root metadata)
+             :roots (skill-metadata--confinement-roots metadata)
              :cache-root (skill-metadata-cache-root metadata))
           (declare (ignore name description canonical-pathname
                            source-character-count))

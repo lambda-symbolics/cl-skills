@@ -102,6 +102,11 @@
     :reader skill-metadata-root
     :type pathname
     :documentation "The ordered discovery root that supplied this skill.")
+    (confinement-roots
+     :initarg :confinement-roots
+     :reader skill-metadata--confinement-roots
+     :type list
+     :documentation "The configured roots that confine discovery and fresh reads.")
    (root-index
     :initarg :root-index
     :reader skill-metadata-root-index

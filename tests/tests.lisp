@@ -46,6 +46,21 @@
       (write-string content stream))
     pathname))
 
+(defun tests--write-native-entry (directory name content)
+  "Write CONTENT to literal native NAME beneath DIRECTORY."
+  (let ((pathname
+          (sb-ext:parse-native-namestring
+           (concatenate 'string
+                        (sb-ext:native-namestring directory)
+                        name))))
+    (with-open-file (stream pathname
+                            :direction ':output
+                            :if-exists ':supersede
+                            :if-does-not-exist ':create
+                            :external-format ':utf-8)
+      (write-string content stream))
+    pathname))
+
 (defun tests--native (name description instructions &key (version 1))
   "Return one native skill definition."
   (format nil
@@ -222,6 +237,61 @@
        (member ':read-error
                (tests--kinds (skill-catalog-discover (list root))))
        "unresolved source links produce scan diagnostics"))))
+
+(defun test-literal-filesystem-entry-names ()
+  "Test that host-valid names cannot abort discovery pathname construction."
+  (with-test-root (root)
+    (tests--write-native-entry
+     root
+     "[English auto-generated [Do.txt"
+     "This unrelated file has a literal unmatched bracket in its name.")
+    (tests--write root "valid/SKILL.sexp"
+                  (tests--native "valid" "Valid." "Body"))
+    (let ((catalog (skill-catalog-discover (list root))))
+      (test-assert (skill-catalog-find catalog "valid")
+                   "an unmatched bracket in a sibling filename does not abort discovery")
+      (test-assert (not (member ':scan-error (tests--kinds catalog)))
+                   "literal host filenames do not produce pathname parse diagnostics"))))
+
+(defun test-symlinked-skill-directories ()
+  "Test symlinked directories across configured roots and fresh-read confinement."
+  (with-test-root (primary)
+    (with-test-root (secondary)
+      (with-test-root (outside)
+        (let* ((target-directory (merge-pathnames "shared/" secondary))
+               (outside-directory (merge-pathnames "escaped/" outside))
+               (link (merge-pathnames "linked" primary)))
+          (tests--write target-directory "SKILL.sexp"
+                        (tests--native "linked" "Linked." "Linked body"))
+          (tests--write outside-directory "SKILL.sexp"
+                        (tests--native "escaped" "Escaped." "Outside body"))
+          (sb-posix:symlink (sb-ext:native-namestring target-directory)
+                            (sb-ext:native-namestring link))
+          (let* ((catalog (skill-catalog-discover (list primary secondary)))
+                 (metadata (skill-catalog-find catalog "linked")))
+            (test-assert metadata
+                         "a skill directory may link into another configured root")
+            (test-assert (uiop:pathname-equal
+                          (skill-metadata-root metadata)
+                          primary)
+                         "symlinked metadata retains the discovery root")
+            (test-assert (string= (skill-metadata-read metadata) "Linked body")
+                         "symlinked skill instructions can be read freshly")
+            (sb-posix:unlink (sb-ext:native-namestring link))
+            (sb-posix:symlink (sb-ext:native-namestring outside-directory)
+                              (sb-ext:native-namestring link))
+            (let ((condition nil))
+              (handler-case
+                  (skill-metadata-read metadata)
+                (skill-read-error (read-error)
+                  (setf condition read-error)))
+              (test-assert condition
+                           "retargeting a selected directory outside configured roots fails closed"))
+            (test-assert
+             (member ':outside-root
+                     (tests--kinds
+                      (skill-catalog-discover (list primary secondary))))
+             "discovery does not follow a directory outside configured roots")))))))
 
 (defun test-scan-limits ()
   "Test bounded traversal and aggregate character budgets."
@@ -500,6 +570,8 @@
   (test-discovery-and-precedence)
   (test-native-validation)
   (test-filesystem-boundaries)
+  (test-literal-filesystem-entry-names)
+  (test-symlinked-skill-directories)
   (test-scan-limits)
   (test-standard-validation)
   (test-conversion-cache)

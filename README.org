@@ -7,7 +7,9 @@ bodies are read from the selected source on demand.
 
 The implementation targets SBCL on POSIX systems. Filesystem traversal is
 bounded, source files must remain regular and root-confined while opened, and
-symbolic-link cycles do not cause repeated traversal.
+symbolic-link cycles do not cause repeated traversal. A symlinked skill
+directory may resolve beneath any configured discovery root; targets outside
+all configured roots are rejected.
 
 * Loading
 

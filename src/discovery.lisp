@@ -54,6 +54,37 @@
   (or (uiop:pathname-equal pathname root)
       (not (null (uiop:subpathp pathname root)))))
 
+(-> skill--directory-entry-pathname
+    (pathname string &key (:directory-p boolean))
+    pathname)
+(defun skill--directory-entry-pathname (directory name &key directory-p)
+  "Return NAME beneath DIRECTORY using the host's literal filename syntax."
+  (sb-ext:parse-native-namestring
+   (concatenate 'string (sb-ext:native-namestring directory) name)
+   nil
+   *default-pathname-defaults*
+   :as-directory directory-p))
+
+(-> skill--canonical-roots (list) list)
+(defun skill--canonical-roots (roots)
+  "Return the canonical existing directory pathnames among ROOTS."
+  (loop for root in roots
+        for canonical = (handler-case
+                            (truename root)
+                          (error ()
+                            nil))
+        when canonical
+          collect (uiop:ensure-directory-pathname canonical)))
+
+(-> skill--canonical-pathname-confined-p (pathname list) boolean)
+(defun skill--canonical-pathname-confined-p (pathname canonical-roots)
+  "Return true when canonical PATHNAME lies within CANONICAL-ROOTS."
+  (not
+   (null
+    (find-if (lambda (root)
+               (skill--canonical-subpath-p pathname root))
+             canonical-roots))))
+
 (-> skill--directory-entries-bounded
     (pathname (integer 0))
     (values list list boolean (integer 0) list))
@@ -65,7 +96,7 @@ value is the number of entries retained toward the aggregate scan budget. The
 fifth value contains unresolved symbolic links.
 Enumeration stops after the first excess entry and never retains an unbounded
 directory listing."
-  (let ((handle (sb-posix:opendir (namestring directory)))
+  (let ((handle (sb-posix:opendir (sb-ext:native-namestring directory)))
         (files nil)
         (subdirectories nil)
         (unresolved-links nil)
@@ -82,23 +113,28 @@ directory listing."
                       (setf entry-count entry-limit
                             exceeded-p t)
                       (loop-finish))
-                    (let* ((pathname (merge-pathnames name directory))
-                           (status (sb-posix:lstat (namestring pathname)))
+                    (let* ((pathname
+                             (skill--directory-entry-pathname directory name))
+                           (status
+                             (sb-posix:lstat
+                              (sb-ext:native-namestring pathname)))
                            (mode (sb-posix:stat-mode status)))
                       (cond
                         ((sb-posix:s-isdir mode)
-                         (push (uiop:ensure-directory-pathname pathname)
+                         (push (skill--directory-entry-pathname
+                                directory name :directory-p t)
                                subdirectories))
                         ((sb-posix:s-islnk mode)
                          (handler-case
                              (let* ((target-status
-                                      (sb-posix:stat (namestring pathname)))
+                                      (sb-posix:stat
+                                       (sb-ext:native-namestring pathname)))
                                     (target-mode
                                       (sb-posix:stat-mode target-status)))
                                (if (sb-posix:s-isdir target-mode)
-                                   (push
-                                    (uiop:ensure-directory-pathname pathname)
-                                    subdirectories)
+                                   (push (skill--directory-entry-pathname
+                                          directory name :directory-p t)
+                                         subdirectories)
                                    (when (skill-source-pathname-p pathname)
                                      (push pathname files))))
                            (error ()
@@ -119,17 +155,20 @@ directory listing."
     (pathname (integer 0)
      &key (:max-depth (integer 0))
           (:max-directories (integer 1))
-          (:max-entries (integer 1)))
+          (:max-entries (integer 1))
+          (:confinement-roots list))
     (values list list (integer 0) (integer 0)))
 (defun skill--scan-root
     (root root-index
      &key
        (max-depth *skill-scan-depth-limit*)
        (max-directories *skill-scan-directory-limit*)
-       (max-entries *skill-scan-entry-limit*))
+       (max-entries *skill-scan-entry-limit*)
+       confinement-roots)
   "Return sorted skill definition paths and diagnostics found beneath ROOT."
   (let ((root (uiop:ensure-directory-pathname root))
         (canonical-root nil)
+        (canonical-confinement-roots nil)
         (paths nil)
         (diagnostics nil)
         (visited (make-hash-table :test #'equal))
@@ -182,12 +221,14 @@ directory listing."
                          nil))))
                (unless canonical
                  (return))
-               (unless (skill--canonical-subpath-p canonical canonical-root)
-                 (record-diagnostic
-                  :outside-root
-                  directory
-                  "Skill discovery did not follow a directory outside its canonical root.")
-                 (return))
+                (unless (skill--canonical-pathname-confined-p
+                         canonical
+                         canonical-confinement-roots)
+                  (record-diagnostic
+                   :outside-root
+                   directory
+                   "Skill discovery did not follow a directory outside its configured canonical roots.")
+                  (return))
                (let ((identity (namestring canonical)))
                  (when (gethash identity visited)
                    (return))
@@ -248,10 +289,15 @@ directory listing."
                                "Could not resolve skill root: ~A"
                                condition))
                       nil))))
-            (when resolved-root
-              (setf canonical-root
-                    (uiop:ensure-directory-pathname resolved-root))
-              (walk root 0)))
+             (when resolved-root
+               (setf canonical-root
+                     (uiop:ensure-directory-pathname resolved-root)
+                     canonical-confinement-roots
+                     (skill--canonical-roots confinement-roots))
+               (pushnew canonical-root
+                        canonical-confinement-roots
+                        :test #'uiop:pathname-equal)
+               (walk root 0)))
           (record-diagnostic :missing-root
                              root
                              "Skill root does not exist.")))
