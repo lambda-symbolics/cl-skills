@@ -486,6 +486,24 @@
                      "catalog never retains native instructions")
         (test-assert (not (search "Autolith" rendered))
                      "catalog rendering is application neutral")
+        (let ((prefix (format nil "CUSTOM PREFIX~%"))
+              (guidance (format nil "~%CUSTOM GUIDANCE")))
+          (multiple-value-bind
+                (custom custom-included custom-omitted)
+              (skill-catalog-render
+               catalog
+               :prefix prefix
+               :guidance guidance)
+            (test-assert
+             (and
+              (string= prefix (subseq custom 0 (length prefix)))
+              (string=
+               guidance
+               (subseq custom (- (length custom) (length guidance))))
+              (= custom-included included)
+              (= custom-omitted omitted)
+              (not (search "select that skill by exact name" custom)))
+             "catalog rendering accepts exact host protocol sections")))
         (let ((bounded-result
                 (loop for budget from 1 below (length rendered)
                       do (handler-case

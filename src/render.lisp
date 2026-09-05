@@ -28,11 +28,13 @@
           "- ~D additional skill~:P omitted by the catalog character budget."
           count))
 
-(-> skill--catalog-compose (list (integer 0)) string)
-(defun skill--catalog-compose (lines omitted-count)
-  "Compose catalog LINES and OMITTED-COUNT with the fixed protocol text."
+(-> skill--catalog-compose
+    (list (integer 0) &key (:prefix string) (:guidance string))
+    string)
+(defun skill--catalog-compose (lines omitted-count &key prefix guidance)
+  "Compose catalog LINES and OMITTED-COUNT within host protocol sections."
   (with-output-to-string (stream)
-    (write-string (skill--catalog-prefix) stream)
+    (write-string prefix stream)
     (if lines
         (loop for line in lines
               do (write-string line stream)
@@ -42,22 +44,31 @@
     (when (plusp omitted-count)
       (write-string (skill--catalog-omission-line omitted-count) stream)
       (terpri stream))
-    (write-string (skill--catalog-guidance) stream)))
+    (write-string guidance stream)))
 
 (-> skill-catalog-render
-    (skill-catalog &key (:character-budget (integer 1)))
+    (skill-catalog &key (:character-budget (integer 1))
+                        (:prefix string)
+                        (:guidance string))
     (values string (integer 0) (integer 0)))
 (defun skill-catalog-render
-    (catalog &key (character-budget *skill-catalog-character-budget*))
+    (catalog
+     &key
+       (character-budget *skill-catalog-character-budget*)
+       (prefix (skill--catalog-prefix))
+       (guidance (skill--catalog-guidance)))
   "Render bounded CATALOG metadata.
 
 Return the rendered text, included metadata count, and omitted metadata count.
-The function never retains a skill instruction string."
+PREFIX and GUIDANCE delimit the host-specific catalog protocol. The function
+never retains a skill instruction string."
   (let* ((skills (skill-catalog-skills catalog))
          (minimum
            (skill--catalog-compose
             nil
-            (if skills (length skills) 0))))
+            (if skills (length skills) 0)
+            :prefix prefix
+            :guidance guidance)))
     (when (> (length minimum) character-budget)
       (error 'skill-catalog-render-error
              :message
@@ -78,7 +89,10 @@ The function never retains a skill instruction string."
                    (omitted
                      (- (length skills) (length candidate-lines)))
                    (rendered
-                     (skill--catalog-compose candidate-lines omitted)))
+                     (skill--catalog-compose
+                      candidate-lines omitted
+                      :prefix prefix
+                      :guidance guidance)))
               (when (<= (length rendered) character-budget)
                 (setf selected
                       (append selected (list metadata))
@@ -87,7 +101,11 @@ The function never retains a skill instruction string."
             (loop for metadata in selected
                   for position from 0
                   for description = (skill-metadata-description metadata)
-                  for current = (skill--catalog-compose lines omitted)
+                  for current =
+                    (skill--catalog-compose
+                     lines omitted
+                     :prefix prefix
+                     :guidance guidance)
                   for available = (- character-budget (length current))
                   for full-line =
                     (skill--catalog-line
@@ -121,7 +139,9 @@ The function never retains a skill instruction string."
                               metadata
                               :description
                               (concatenate 'string prefix "..."))))))))
-            (values (skill--catalog-compose lines omitted)
+            (values (skill--catalog-compose
+                     lines omitted
+                     :prefix prefix
+                     :guidance guidance)
                     (length selected)
                     omitted))))))
-

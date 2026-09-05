@@ -46,7 +46,9 @@ limit outcomes. Each diagnostic has =KIND=, =PATHNAME=, =ROOT-INDEX=, and
 
 =SKILL-CATALOG-RENDER= produces a provider-neutral, character-bounded catalog
 containing names, descriptions, and source paths, but no instruction bodies.
-It returns the rendered text, included count, and omitted count.
+It returns the rendered text, included count, and omitted count. Optional
+=:PREFIX= and =:GUIDANCE= strings replace the default host protocol sections
+and count toward the character budget.
 
 * Source formats
 
