@@ -12,14 +12,14 @@
 
 (-> skill--read-file-bounded
     (pathname (integer 1) &key (:roots list))
-    (values string pathname (integer 0) (integer 0)))
+    (values string pathname t))
 (defun skill--read-file-bounded (pathname character-limit &key roots)
   "Read one root-confined regular PATHNAME with a stable filesystem identity.
 
-Return the bounded UTF-8 source, canonical pathname, device, and inode. Opening
-uses a nonblocking descriptor so a FIFO or other non-regular candidate cannot
-stall discovery. When ROOTS is non-NIL, the file must resolve beneath one of
-those configured roots."
+Return the bounded UTF-8 source, canonical pathname, and the EQUAL-comparable
+filesystem identity of the file read. Opening never blocks, so a FIFO or other
+non-regular candidate cannot stall discovery. When ROOTS is non-NIL, the file
+must resolve beneath one of those configured roots."
   (handler-case
       (let* ((canonical (truename pathname))
              (canonical-roots (skill--canonical-roots roots)))
@@ -31,43 +31,41 @@ those configured roots."
           (skill--definition-fail
            :outside-root
            "The skill source resolves outside its configured canonical roots."))
-        (let* ((expected-status
-                 (sb-posix:stat (sb-ext:native-namestring pathname)))
-               (expected-mode (sb-posix:stat-mode expected-status))
-               (expected-device (sb-posix:stat-dev expected-status))
-               (expected-inode (sb-posix:stat-ino expected-status))
-               (descriptor nil))
-          (unless (sb-posix:s-isreg expected-mode)
+        (let* ((expected
+                 (ls-compat.posix:file-information pathname :follow-links-p t))
+               (expected-identity
+                 (ls-compat.posix:file-information-identity expected))
+               (stream nil))
+          (unless (eq (ls-compat.posix:file-information-kind expected) ':file)
             (skill--definition-fail
              :not-regular-file
              "The skill source must resolve to a regular file."))
           (unwind-protect
-                (progn
-                  (setf descriptor
-                        (sb-posix:open
-                         (sb-ext:native-namestring pathname)
-                         (logior sb-posix:o-rdonly sb-posix:o-nonblock)))
-                  (let* ((opened-status (sb-posix:fstat descriptor))
-                         (opened-mode (sb-posix:stat-mode opened-status))
-                         (opened-device (sb-posix:stat-dev opened-status))
-                         (opened-inode (sb-posix:stat-ino opened-status))
+                (multiple-value-bind (opened-stream opened)
+                    (handler-case
+                        (ls-compat.posix:open-regular-file
+                         pathname
+                         :follow-links-p t
+                         :element-type 'character
+                         :external-format ':utf-8)
+                      (ls-compat.posix:not-regular-file ()
+                        (skill--definition-fail
+                         :not-regular-file
+                         "The skill source must resolve to a regular file.")))
+                  (setf stream opened-stream)
+                  (let* ((opened-identity
+                           (ls-compat.posix:file-information-identity opened))
                          (current-canonical (truename pathname))
-                         (current-status
-                           (sb-posix:stat
-                            (sb-ext:native-namestring pathname))))
-                   (unless (sb-posix:s-isreg opened-mode)
-                     (skill--definition-fail
-                      :not-regular-file
-                      "The skill source must resolve to a regular file."))
-                   (unless (and (= opened-device expected-device)
-                                (= opened-inode expected-inode)
-                                (= opened-device
-                                   (sb-posix:stat-dev current-status))
-                                (= opened-inode
-                                   (sb-posix:stat-ino current-status)))
-                     (skill--definition-fail
-                      :identity-changed
-                      "The skill source changed identity while it was being opened."))
+                         (current
+                           (ls-compat.posix:file-information
+                            pathname :follow-links-p t)))
+                    (unless (and (equal opened-identity expected-identity)
+                                 (equal opened-identity
+                                        (ls-compat.posix:file-information-identity
+                                         current)))
+                      (skill--definition-fail
+                       :identity-changed
+                       "The skill source changed identity while it was being opened."))
                     (when (and roots
                                (not
                                 (skill--canonical-pathname-confined-p
@@ -76,35 +74,24 @@ those configured roots."
                       (skill--definition-fail
                        :outside-root
                        "The skill source resolves outside its configured canonical roots."))
-                   (let ((stream
-                           (sb-sys:make-fd-stream
-                            descriptor
-                            :input t
-                            :element-type 'character
-                            :external-format ':utf-8
-                            :pathname pathname
-                            :auto-close t)))
-                     (setf descriptor nil)
-                     (with-open-stream (stream stream)
-                       ;; A decoding or stream failure does not report its
-                       ;; partial progress. Charge the complete allowance
-                       ;; until a successful read supplies the exact count.
-                       (setf *skill-definition-source-character-count*
-                             character-limit)
-                       (let* ((buffer (make-string (1+ character-limit)))
-                              (count (read-sequence buffer stream)))
-                         (setf *skill-definition-source-character-count* count)
-                         (when (> count character-limit)
-                           (skill--definition-fail
-                            :file-too-large
-                            "The skill source exceeds the ~D-character file limit."
-                            character-limit))
-                         (values (subseq buffer 0 count)
-                                 current-canonical
-                                 opened-device
-                                 opened-inode))))))
-            (when descriptor
-              (ignore-errors (sb-posix:close descriptor))))))
+                    ;; A decoding or stream failure does not report its
+                    ;; partial progress. Charge the complete allowance
+                    ;; until a successful read supplies the exact count.
+                    (setf *skill-definition-source-character-count*
+                          character-limit)
+                    (let* ((buffer (make-string (1+ character-limit)))
+                           (count (read-sequence buffer stream)))
+                      (setf *skill-definition-source-character-count* count)
+                      (when (> count character-limit)
+                        (skill--definition-fail
+                         :file-too-large
+                         "The skill source exceeds the ~D-character file limit."
+                         character-limit))
+                      (values (subseq buffer 0 count)
+                              current-canonical
+                              opened-identity))))
+            (when stream
+              (close stream)))))
     (skill--definition-error (condition)
       (error condition))
     (error (condition)

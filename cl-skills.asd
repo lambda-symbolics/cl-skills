@@ -5,8 +5,8 @@
   :version "0.1.0"
   :serial t
   :depends-on (#:ironclad/digest/sha256
+               #:ls-compat/posix
                #:nyaml
-               #:sb-posix
                #:sexp-config
                #:serapeum)
   :components ((:module "src"
