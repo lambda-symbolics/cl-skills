@@ -62,9 +62,9 @@
                                    :external-format ':utf-8)
              (write-string content stream)
              (finish-output stream))
-           (sb-posix:chmod (sb-ext:native-namestring temporary) #o600)
+           (setf (ls-compat.posix:file-mode temporary) #o600)
            (uiop:rename-file-overwriting-target temporary pathname)
-           (sb-posix:chmod (sb-ext:native-namestring pathname) #o600)
+           (setf (ls-compat.posix:file-mode pathname) #o600)
            pathname)
       (when (probe-file temporary)
         (ignore-errors (delete-file temporary))))))
@@ -86,19 +86,19 @@
   "Return integrity-checked cached native values and true, or four NIL values."
   (handler-case
       (multiple-value-bind
-            (cache-source canonical-pathname device inode)
+            (cache-source canonical-pathname identity)
           (skill--read-file-bounded
            pathname
            *skill-agent-cache-character-limit*
            :roots (list cache-root))
-        (declare (ignore canonical-pathname device inode))
+        (declare (ignore canonical-pathname identity))
         (multiple-value-bind
-              (manifest-source manifest-canonical manifest-device manifest-inode)
+              (manifest-source manifest-canonical manifest-identity)
             (skill--read-file-bounded
              (skill--agent-cache-manifest-pathname pathname)
              256
              :roots (list cache-root))
-          (declare (ignore manifest-canonical manifest-device manifest-inode))
+          (declare (ignore manifest-canonical manifest-identity))
           (unless (string=
                    manifest-source
                    (skill--agent-cache-manifest-source
@@ -132,9 +132,9 @@
        cache-root)
   "Read SKILL.md and use its content-addressed native conversion cache."
   (let ((*skill-definition-source-character-count* 0))
-    (multiple-value-bind (source canonical-pathname device inode)
+    (multiple-value-bind (source canonical-pathname identity)
         (skill--read-file-bounded pathname file-character-limit :roots roots)
-      (declare (ignore device inode))
+      (declare (ignore identity))
       (let* ((source-character-count
                *skill-definition-source-character-count*)
              (digest (skill-source-digest source))

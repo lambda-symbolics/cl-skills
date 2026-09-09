@@ -96,60 +96,45 @@ value is the number of entries retained toward the aggregate scan budget. The
 fifth value contains unresolved symbolic links.
 Enumeration stops after the first excess entry and never retains an unbounded
 directory listing."
-  (let ((handle (sb-posix:opendir (sb-ext:native-namestring directory)))
-        (files nil)
+  (let ((files nil)
         (subdirectories nil)
-        (unresolved-links nil)
-        (entry-count 0)
-        (exceeded-p nil))
-    (unwind-protect
-         (loop for entry = (sb-posix:readdir handle)
-               until (sb-alien:null-alien entry)
-               for name = (sb-posix:dirent-name entry)
-               unless (member name '("." "..") :test #'string=)
-                 do
-                    (incf entry-count)
-                    (when (> entry-count entry-limit)
-                      (setf entry-count entry-limit
-                            exceeded-p t)
-                      (loop-finish))
-                    (let* ((pathname
-                             (skill--directory-entry-pathname directory name))
-                           (status
-                             (sb-posix:lstat
-                              (sb-ext:native-namestring pathname)))
-                           (mode (sb-posix:stat-mode status)))
-                      (cond
-                        ((sb-posix:s-isdir mode)
-                         (push (skill--directory-entry-pathname
-                                directory name :directory-p t)
-                               subdirectories))
-                        ((sb-posix:s-islnk mode)
-                         (handler-case
-                             (let* ((target-status
-                                      (sb-posix:stat
-                                       (sb-ext:native-namestring pathname)))
-                                    (target-mode
-                                      (sb-posix:stat-mode target-status)))
-                               (if (sb-posix:s-isdir target-mode)
-                                   (push (skill--directory-entry-pathname
-                                          directory name :directory-p t)
-                                         subdirectories)
-                                   (when (skill-source-pathname-p pathname)
-                                     (push pathname files))))
-                           (error ()
-                             (push pathname unresolved-links))))
-                        ((or (sb-posix:s-isreg mode)
-                             (skill-source-pathname-p pathname))
-                         (push pathname files)))))
-      (sb-posix:closedir handle))
-    (if exceeded-p
-        (values nil nil t entry-count nil)
-        (values (sort files #'skill--pathname<)
-                (sort subdirectories #'skill--pathname<)
-                nil
-                entry-count
-                (sort unresolved-links #'skill--pathname<)))))
+        (unresolved-links nil))
+    (multiple-value-bind (entries exceeded-p)
+        (ls-compat.posix:directory-entries directory :limit entry-limit)
+      (if exceeded-p
+          (values nil nil t entry-limit nil)
+          (progn
+            (dolist (entry entries)
+              (let ((name (car entry))
+                    (kind (cdr entry)))
+                (let ((pathname (skill--directory-entry-pathname directory name)))
+                  (case kind
+                    (:directory
+                     (push (skill--directory-entry-pathname
+                            directory name :directory-p t)
+                           subdirectories))
+                    (:symbolic-link
+                     (handler-case
+                         (if (eq (ls-compat.posix:file-information-kind
+                                  (ls-compat.posix:file-information
+                                   pathname :follow-links-p t))
+                                 ':directory)
+                             (push (skill--directory-entry-pathname
+                                    directory name :directory-p t)
+                                   subdirectories)
+                             (when (skill-source-pathname-p pathname)
+                               (push pathname files)))
+                       (error ()
+                         (push pathname unresolved-links))))
+                    (t
+                     (when (or (eq kind ':file)
+                               (skill-source-pathname-p pathname))
+                       (push pathname files)))))))
+            (values (sort files #'skill--pathname<)
+                    (sort subdirectories #'skill--pathname<)
+                    nil
+                    (length entries)
+                    (sort unresolved-links #'skill--pathname<)))))))
 
 (-> skill--scan-root
     (pathname (integer 0)
