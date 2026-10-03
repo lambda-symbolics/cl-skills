@@ -581,10 +581,67 @@
           (test-assert (= (skill-body-too-large-character-limit condition) 4)
                        "body-too-large records active instruction limit"))))))
 
+(defun test-source-validation ()
+  "Test in-memory validation, typed failures, and its independent bounds."
+  (dolist (name (list "a" "release-notes" "skill-12" (make-string 64 :initial-element #\a)))
+    (test-assert (eq (skill-name-valid-p name) t) "portable names are accepted"))
+  (dolist (name (list nil 7 "" "Upper" "é" "a_b" "../a" "-a" "a-" "a--b"
+                     (make-string 65 :initial-element #\a)))
+    (test-assert (null (skill-name-valid-p name)) "invalid portable names are rejected"))
+  (with-test-root (root)
+    (let ((body (format nil "Exact λ body.~%  Keep indentation.~%")))
+      (dolist (format '(:native :agent-skill))
+        (let* ((pathname (merge-pathnames (if (eq format ':native)
+                                             "alpha/SKILL.sexp"
+                                             "alpha/SKILL.md") root))
+               (source (if (eq format ':native)
+                           (tests--native "alpha" "A   description." body)
+                           (tests--standard "alpha" "A   description." body))))
+          (multiple-value-bind (name description instructions)
+              (skill-source-validate source pathname)
+            (test-assert (string= name "alpha") "validation returns the source name")
+            (test-assert (string= description "A description.") "description is normalized")
+            (test-assert (string= instructions body) "instruction text is preserved"))))
+      (test-assert (and (null (uiop:directory-files root))
+                        (null (uiop:subdirectories root)))
+                   "source validation creates no files or directories"))
+    (let ((pathname (merge-pathnames "alpha/SKILL.md" root)))
+      (test-assert (string= (third (multiple-value-list
+                                   (skill-source-validate
+                                    (tests--standard "alpha" "Empty body." "") pathname))) "")
+                   "standard skills permit empty instructions")
+      (dolist (case (list
+                     (list "SKILL.md" "Missing frontmatter" ':invalid-syntax)
+                     (list "alpha/SKILL.md" (tests--standard "other" "Mismatch." "Body") ':invalid-name)
+                     (list "alpha/SKILL.md" (tests--standard "alpha--x" "Bad name." "Body") ':invalid-name)
+                     (list "alpha/SKILL.md" (format nil "---~%name: alpha~%---~%Body") ':missing-field)
+                     (list "alpha/SKILL.md" (format nil "---~%name: alpha~%name: alpha~%description: D~%---~%Body") ':duplicate-field)
+                     (list "alpha/SKILL.sexp" (tests--native "alpha" "D" "") ':invalid-instructions)
+                     (list "alpha/SKILL.sexp" "#.(error \"reader evaluation\")" ':invalid-syntax)
+                     (list "alpha/skill.md" (tests--standard "alpha" "D" "Body") ':invalid-structure)))
+        (let* ((target (merge-pathnames (first case) root))
+               (condition (handler-case
+                              (progn (skill-source-validate (second case) target) nil)
+                            (skill-validation-error (condition) condition))))
+          (test-assert (and condition
+                            (eq (skill-validation-error-kind condition) (third case))
+                            (equal (skill-validation-error-pathname condition) target))
+                       "invalid source has a typed kind and intended pathname")))
+      (let ((source (tests--standard "alpha" "D" "12345")))
+        (dolist (options (list (list :file-character-limit (1- (length source)))
+                              (list :instruction-character-limit 4)))
+          (test-assert
+           (handler-case
+               (progn (apply #'skill-source-validate source pathname options) nil)
+             (skill-validation-error (condition)
+               (eq (skill-validation-error-kind condition) ':file-too-large)))
+           "source and instruction bounds are enforced independently"))))))
+
 (defun run-tests ()
   "Run the complete cl-skills test suite."
   (setf *test-count* 0)
   (test-path-classification)
+  (test-source-validation)
   (test-discovery-and-precedence)
   (test-native-validation)
   (test-filesystem-boundaries)

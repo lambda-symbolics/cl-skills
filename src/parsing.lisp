@@ -446,14 +446,20 @@ COMMON-LISP from the reader package keeps a bare symbol from naming anything."
       (and (char>= character #\0) (char<= character #\9))
       (char= character #\-)))
 
+(-> skill-name-valid-p (t) boolean)
+(defun skill-name-valid-p (name)
+  "Return T when NAME follows the portable Agent Skills naming grammar."
+  (and (stringp name)
+       (<= 1 (length name) 64)
+       (every #'skill--agent-name-character-p name)
+       (not (char= (char name 0) #\-))
+       (not (char= (char name (1- (length name))) #\-))
+       (null (search "--" name))))
+
 (-> skill--validate-agent-name (string pathname) string)
 (defun skill--validate-agent-name (name pathname)
   "Return validated standard Agent Skill NAME for source PATHNAME."
-  (unless (and (<= 1 (length name) 64)
-               (every #'skill--agent-name-character-p name)
-               (not (char= (char name 0) #\-))
-               (not (char= (char name (1- (length name))) #\-))
-               (null (search "--" name)))
+  (unless (skill-name-valid-p name)
     (skill--definition-fail
      :invalid-name
      "SKILL.md name must use 1-64 lowercase ASCII letters, digits, or single hyphens."))
@@ -545,3 +551,44 @@ COMMON-LISP from the reader package keeps a bare symbol from naming anything."
                instructions
                instruction-character-limit
                :allow-empty-p t)))))
+
+
+;;;; -- In-memory Source Validation --
+
+(-> skill-source-validate
+    (string pathname
+     &key (:file-character-limit (integer 1))
+          (:instruction-character-limit (integer 1)))
+    (values string string string))
+(defun skill-source-validate
+    (source pathname
+     &key (file-character-limit *skill-file-character-limit*)
+          (instruction-character-limit *skill-instruction-character-limit*))
+  "Validate SOURCE for its intended PATHNAME without filesystem access.
+
+Return the name, normalized description, and exact instruction body. PATHNAME
+selects the exact SKILL.md or SKILL.sexp format; Markdown names must match its
+parent directory. Source and instruction bounds use the same policy as file
+reads. Invalid definitions signal SKILL-VALIDATION-ERROR."
+  (let ((*skill-definition-source-character-count* (length source)))
+    (handler-case
+        (progn
+          (when (> (length source) file-character-limit)
+            (skill--definition-fail
+             :file-too-large "The skill source exceeds the ~D-character file limit."
+             file-character-limit))
+          (case (skill-source-format-for-pathname pathname)
+            (:native
+             (skill--parse-native-source
+              source :instruction-character-limit instruction-character-limit))
+            (:agent-skill
+             (skill--parse-agent-source
+              source pathname :instruction-character-limit instruction-character-limit))
+            (otherwise
+             (skill--definition-fail
+              :invalid-structure "A skill source must be named SKILL.md or SKILL.sexp."))))
+      (skill--definition-error (condition)
+        (error 'skill-validation-error
+               :kind (skill--definition-error-kind condition)
+               :pathname pathname
+               :message (skill--definition-error-message condition))))))

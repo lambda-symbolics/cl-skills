@@ -51,6 +51,7 @@
    #:skill-metadata-root
    #:skill-metadata-root-index
    #:skill-metadata-source-format
+   #:skill-name-valid-p
    #:skill-error
    #:skill-error-message
    #:skill-read-error
@@ -60,6 +61,10 @@
    #:skill-source-format
    #:skill-source-format-for-pathname
    #:skill-source-pathname-p
+   #:skill-source-validate
+   #:skill-validation-error
+   #:skill-validation-error-kind
+   #:skill-validation-error-pathname
    #:skill-standard-cache-pathname))
 
 (in-package #:cl-skills)

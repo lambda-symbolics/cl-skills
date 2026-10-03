@@ -50,6 +50,20 @@ It returns the rendered text, included count, and omitted count. Optional
 =:PREFIX= and =:GUIDANCE= strings replace the default host protocol sections
 and count toward the character budget.
 
+* Validating source text
+
+Use =SKILL-NAME-VALID-P= to check the portable Agent Skills name grammar.
+=SKILL-SOURCE-VALIDATE= accepts source text and its intended pathname without
+reading or writing files. The exact =SKILL.md= or =SKILL.sexp= filename selects
+its format; Markdown names must match the parent directory. It returns the
+name, normalized description, and unchanged instruction body. Bind the usual
+bounds or supply =:FILE-CHARACTER-LIMIT= and =:INSTRUCTION-CHARACTER-LIMIT=.
+Invalid source signals =SKILL-VALIDATION-ERROR= with =KIND= and =PATHNAME= readers.
+
+#+begin_src lisp
+(cl-skills:skill-source-validate source #P"release-notes/SKILL.md")
+#+end_src
+
 * Source formats
 
 A standard Skill is an exact case-sensitive =SKILL.md= file. It must begin

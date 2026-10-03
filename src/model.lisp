@@ -209,6 +209,19 @@
     :documentation "The characters needed for the catalog protocol itself."))
   (:documentation "A catalog budget cannot hold its required guidance."))
 
+(define-condition skill-validation-error (skill-error)
+  ((kind
+    :initarg :kind
+    :reader skill-validation-error-kind
+    :type skill-diagnostic-kind
+    :documentation "The structured source validation failure.")
+   (pathname
+    :initarg :pathname
+    :reader skill-validation-error-pathname
+    :type pathname
+    :documentation "The intended source pathname, without filesystem access."))
+  (:documentation "An in-memory skill source failed validation."))
+
 (define-condition skill--definition-error (error)
   ((kind
     :initarg :kind
