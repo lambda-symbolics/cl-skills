@@ -2,3 +2,4 @@ ql ironclad 2026-01-01
 ql nyaml 2026-01-01
 ql serapeum 2026-01-01
 git sexp-config https://github.com/luciusmagn/sexp-config.git :ref 408fa906e2d16aa515b39c943d3affcab3811ffc
+git ls-compat https://github.com/lambda-symbolics/ls-compat.git :ref 52c959f2bc00adc30f2970c2fd2226bd0c01730d

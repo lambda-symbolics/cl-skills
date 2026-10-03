@@ -19,8 +19,8 @@ With the system available to ASDF:
 (asdf:load-system "cl-skills")
 #+end_src
 
-The library depends on Ironclad, NYAML, sexp-config, Serapeum, UIOP, and the
-SBCL =sb-posix= contrib.
+The library depends on Ironclad, NYAML, ls-compat/posix, sexp-config,
+Serapeum, and UIOP.
 
 * Discovering and reading Skills
 

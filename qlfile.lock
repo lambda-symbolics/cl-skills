@@ -18,3 +18,7 @@
  (:class qlot/source/git:source-git
   :initargs (:remote-url "https://github.com/luciusmagn/sexp-config.git" :ref "408fa906e2d16aa515b39c943d3affcab3811ffc")
   :version "git-408fa906e2d16aa515b39c943d3affcab3811ffc"))
+("ls-compat" .
+ (:class qlot/source/git:source-git
+  :initargs (:remote-url "https://github.com/lambda-symbolics/ls-compat.git" :ref "52c959f2bc00adc30f2970c2fd2226bd0c01730d")
+  :version "git-52c959f2bc00adc30f2970c2fd2226bd0c01730d"))
