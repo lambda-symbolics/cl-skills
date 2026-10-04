@@ -238,6 +238,40 @@
                (tests--kinds (skill-catalog-discover (list root))))
        "unresolved source links produce scan diagnostics"))))
 
+(defun test-canonical-discovery-roots ()
+  "Test root aliases, component boundaries, and missing discovery roots."
+  (with-test-root (parent)
+    (let* ((root (merge-pathnames "skills/" parent))
+           (sibling (merge-pathnames "skills-extra/" parent))
+           (alias (merge-pathnames "alias" parent))
+           (missing (merge-pathnames "missing/" parent))
+           (source (tests--write root "SKILL.sexp"
+                                 (tests--native "inside" "Inside." "Inside body")))
+           (outside (tests--write sibling "SKILL.sexp"
+                                  (tests--native "outside" "Outside." "Outside body")))
+           (link (merge-pathnames "linked/SKILL.sexp" root)))
+      (ensure-directories-exist link)
+      (sb-posix:symlink (sb-ext:native-namestring outside)
+                        (sb-ext:native-namestring link))
+      (sb-posix:symlink (sb-ext:native-namestring root)
+                        (sb-ext:native-namestring alias))
+      (dolist (discovery-root (list root (uiop:ensure-directory-pathname alias)))
+        (let* ((catalog (skill-catalog-discover (list discovery-root missing)))
+               (metadata (skill-catalog-find catalog "inside"))
+               (kinds (tests--kinds catalog)))
+          (test-assert (equal (tests--names catalog) '("inside"))
+                       "a canonical or aliased root admits only its own source")
+          (test-assert
+           (uiop:pathname-equal (skill-metadata-canonical-pathname metadata)
+                                (ls-compat.posix:canonical-pathname source))
+           "metadata records the canonical source behind a root alias")
+          (test-assert (string= (skill-metadata-read metadata) "Inside body")
+                       "a source at the discovery root can be read freshly")
+          (test-assert (member ':outside-root kinds)
+                       "a similarly prefixed sibling is outside the root")
+          (test-assert (member ':missing-root kinds)
+                       "a missing root is diagnosed without blocking a valid root"))))))
+
 (defun test-literal-filesystem-entry-names ()
   "Test that host-valid names cannot abort discovery pathname construction."
   (with-test-root (root)
@@ -645,6 +679,7 @@
   (test-discovery-and-precedence)
   (test-native-validation)
   (test-filesystem-boundaries)
+  (test-canonical-discovery-roots)
   (test-literal-filesystem-entry-names)
   (test-symlinked-skill-directories)
   (test-scan-limits)

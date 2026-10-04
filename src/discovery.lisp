@@ -48,12 +48,6 @@
              (eq (skill-source-format-for-pathname right) ':agent-skill))
         (not (null (string< (namestring left) (namestring right)))))))
 
-(-> skill--canonical-subpath-p (pathname pathname) boolean)
-(defun skill--canonical-subpath-p (pathname root)
-  "Return true when canonical PATHNAME is ROOT or lies beneath it."
-  (or (uiop:pathname-equal pathname root)
-      (not (null (uiop:subpathp pathname root)))))
-
 (-> skill--directory-entry-pathname
     (pathname string &key (:directory-p boolean))
     pathname)
@@ -70,19 +64,20 @@
   "Return the canonical existing directory pathnames among ROOTS."
   (loop for root in roots
         for canonical = (handler-case
-                            (truename root)
+                            (when (uiop:directory-exists-p root)
+                              (ls-compat.posix:canonical-pathname root))
                           (error ()
                             nil))
         when canonical
           collect (uiop:ensure-directory-pathname canonical)))
 
-(-> skill--canonical-pathname-confined-p (pathname list) boolean)
-(defun skill--canonical-pathname-confined-p (pathname canonical-roots)
-  "Return true when canonical PATHNAME lies within CANONICAL-ROOTS."
+(-> skill--pathname-confined-p (pathname list) boolean)
+(defun skill--pathname-confined-p (pathname canonical-roots)
+  "Return true when PATHNAME resolves within one of CANONICAL-ROOTS."
   (not
    (null
     (find-if (lambda (root)
-               (skill--canonical-subpath-p pathname root))
+               (ls-compat.posix:pathname-within-p pathname root))
              canonical-roots))))
 
 (-> skill--directory-entries-bounded
@@ -195,7 +190,7 @@ directory listing."
              (incf directory-count)
              (let ((canonical
                      (handler-case
-                         (truename directory)
+                         (ls-compat.posix:canonical-pathname directory)
                        (error (condition)
                          (record-diagnostic
                           :scan-error
@@ -206,7 +201,7 @@ directory listing."
                          nil))))
                (unless canonical
                  (return))
-                (unless (skill--canonical-pathname-confined-p
+                (unless (skill--pathname-confined-p
                          canonical
                          canonical-confinement-roots)
                   (record-diagnostic
@@ -265,7 +260,7 @@ directory listing."
       (if (uiop:directory-exists-p root)
           (let ((resolved-root
                   (handler-case
-                      (truename root)
+                      (ls-compat.posix:canonical-pathname root)
                     (error (condition)
                       (record-diagnostic
                        :scan-error

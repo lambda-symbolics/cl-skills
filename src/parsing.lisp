@@ -21,11 +21,11 @@ filesystem identity of the file read. Opening never blocks, so a FIFO or other
 non-regular candidate cannot stall discovery. When ROOTS is non-NIL, the file
 must resolve beneath one of those configured roots."
   (handler-case
-      (let* ((canonical (truename pathname))
+      (let* ((canonical (ls-compat.posix:canonical-pathname pathname))
              (canonical-roots (skill--canonical-roots roots)))
         (when (and roots
                    (not
-                    (skill--canonical-pathname-confined-p
+                    (skill--pathname-confined-p
                      canonical
                      canonical-roots)))
           (skill--definition-fail
@@ -55,7 +55,8 @@ must resolve beneath one of those configured roots."
                   (setf stream opened-stream)
                   (let* ((opened-identity
                            (ls-compat.posix:file-information-identity opened))
-                         (current-canonical (truename pathname))
+                         (current-canonical
+                           (ls-compat.posix:canonical-pathname pathname))
                          (current
                            (ls-compat.posix:file-information
                             pathname :follow-links-p t)))
@@ -68,7 +69,7 @@ must resolve beneath one of those configured roots."
                        "The skill source changed identity while it was being opened."))
                     (when (and roots
                                (not
-                                (skill--canonical-pathname-confined-p
+                                (skill--pathname-confined-p
                                  current-canonical
                                  canonical-roots)))
                       (skill--definition-fail
