@@ -22,3 +22,7 @@
  (:class qlot/source/git:source-git
   :initargs (:remote-url "https://github.com/lambda-symbolics/ls-compat.git" :ref "52c959f2bc00adc30f2970c2fd2226bd0c01730d")
   :version "git-52c959f2bc00adc30f2970c2fd2226bd0c01730d"))
+("cl-llm-provider-api" .
+ (:class qlot/source/git:source-git
+  :initargs (:remote-url "https://github.com/lambda-symbolics/cl-llm-provider-api.git" :ref "b9caefc8b181b0efac85c05bc018fb5ac6e7f440")
+  :version "git-b9caefc8b181b0efac85c05bc018fb5ac6e7f440"))

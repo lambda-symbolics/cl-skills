@@ -30,3 +30,19 @@
   :perform (asdf:test-op (operation component)
              (declare (ignore operation component))
              (uiop:symbol-call '#:cl-skills/tests '#:run-tests)))
+
+(asdf:defsystem #:cl-skills/executable
+  :description "Optional executable Skill declarations and authorized invocation."
+  :depends-on (#:cl-skills #:cl-llm-provider-api/contracts)
+  :serial t
+  :components ((:file "src/executable")
+               (:file "src/executable-invocation"))
+  :in-order-to ((asdf:test-op (asdf:test-op #:cl-skills/executable/tests))))
+
+(asdf:defsystem #:cl-skills/executable/tests
+  :description "Executable Skill discovery and real callable verification tests."
+  :depends-on (#:cl-skills/tests #:cl-skills/executable)
+  :components ((:file "tests/executable-tests"))
+  :perform (asdf:test-op (operation component)
+             (declare (ignore operation component))
+             (uiop:symbol-call '#:cl-skills/tests '#:run-executable-tests)))

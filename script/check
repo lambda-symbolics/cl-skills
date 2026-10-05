@@ -13,5 +13,7 @@ fi
 exec sbcl --noinform --non-interactive \
   --load "$root/.qlot/setup.lisp" \
   --eval '(require :asdf)' \
+  --eval '(asdf:initialize-source-registry (list :source-registry (list :directory (uiop:getcwd)) :inherit-configuration))' \
   --eval '(asdf:load-asd (truename "cl-skills.asd"))' \
-  --eval '(asdf:test-system "cl-skills")'
+  --eval '(asdf:test-system "cl-skills")' \
+  --eval '(asdf:test-system "cl-skills/executable")'
