@@ -44,6 +44,7 @@
    #:skill-metadata
    #:skill-metadata-cache-root
    #:skill-metadata-canonical-pathname
+   #:skill-metadata-discover
    #:skill-metadata-description
    #:skill-metadata-name
    #:skill-metadata-pathname

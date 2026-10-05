@@ -44,6 +44,11 @@ limit outcomes. Each diagnostic has =KIND=, =PATHNAME=, =ROOT-INDEX=, and
 =MESSAGE= readers. Selected-source failures signal =SKILL-READ-ERROR= or its
 =SKILL-BODY-TOO-LARGE= subtype.
 
+Use =(SKILL-METADATA-DISCOVER pathname root)= to revalidate an exact selected
+source without scanning surrounding directories. It returns fresh metadata and
+=NIL=, or =NIL= and a structured diagnostic. Supply =:ROOT-INDEX= and
+=:CACHE-ROOT= when needed. The same bounded parser and root confinement apply.
+
 =SKILL-CATALOG-RENDER= produces a provider-neutral, character-bounded catalog
 containing names, descriptions, and source paths, but no instruction bodies.
 It returns the rendered text, included count, and omitted count. Optional

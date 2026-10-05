@@ -53,6 +53,7 @@
 (deftype skill-diagnostic-kind ()
   "A structured reason why skill discovery did not select one path."
   '(member :missing-root
+           :invalid-source
            :scan-error
            :scan-depth-limit
            :scan-directory-limit

@@ -215,6 +215,26 @@
                    :skills (nreverse skills)
                    :diagnostics (nreverse diagnostics))))
 
+(-> skill-metadata-discover
+    (pathname pathname &key (:root-index (integer 0))
+                           (:cache-root (option pathname)))
+    (values (option skill-metadata) (option skill-diagnostic)))
+(defun skill-metadata-discover (pathname root &key (root-index 0) cache-root)
+  "Read one exact supported source beneath ROOT without enumerating a catalog.
+Return fresh metadata or a structured diagnostic. Confinement and parser limits
+are identical to catalog discovery; no executable code is loaded."
+  (let ((root (uiop:ensure-directory-pathname root)))
+    (if (skill-source-format-for-pathname pathname)
+        (multiple-value-bind (metadata diagnostic characters)
+            (skill--load-metadata pathname root root-index
+                                  :confinement-roots (list root)
+                                  :cache-root cache-root)
+          (declare (ignore characters))
+          (values metadata diagnostic))
+        (values nil (skill--diagnostic
+                     :kind ':invalid-source :pathname pathname :root-index root-index
+                     :message "The pathname does not name a supported skill source.")))))
+
 (-> skill-catalog-find (skill-catalog string) (option skill-metadata))
 (defun skill-catalog-find (catalog name)
   "Return the selected skill named NAME from CATALOG, if present."
