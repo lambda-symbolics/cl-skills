@@ -111,6 +111,112 @@ directories, entries, per-file characters, aggregate discovery characters,
 structural native-form complexity, selected instruction size, and rendered
 catalog size. Applications may bind them around discovery or selected reads.
 
+* Optional executable Skills
+
+Load =cl-skills/executable= to read an optional, exact =EXECUTABLE.sexp= sidecar
+beside a selected Skill source. This system depends on =cl-skills= and
+=cl-llm-provider-api/contracts=, whose validator and portable value conversions
+are reused. The base system has no executable dependency.
+
+#+begin_src lisp
+(:skill-executable
+ :format-version 1
+ :skill-version "1.0.0"
+ :system "release-notes"
+ :system-version "1.0.0"
+ :entrypoint ("RELEASE-NOTES" "RUN")
+ :self-test ("RELEASE-NOTES" "SELF-TEST")
+ :verify ("RELEASE-NOTES" "VERIFY")
+ :dependencies (("uiop" "3.3.0"))
+ :capabilities ("workspace-read")
+ :tools ("resource.read")
+ :input (:type :object
+         :properties (("revision" (:type :string)))
+         :required ("revision") :additional-properties nil)
+ :output (:type :string))
+#+end_src
+
+=:FORMAT-VERSION= must be 1. =:SKILL-VERSION= is a bounded opaque release label.
+Declare =:SYSTEM=, =:ENTRYPOINT=, or both. A callable entrypoint requires =:INPUT=
+and =:OUTPUT= contracts. Entrypoint, self-test and verification declarations are
+exact package-name/symbol-name strings, not reader symbols. =:SYSTEM-VERSION=
+is an optional exact ASDF version; dependency pairs declare minimum ASDF
+versions. These versions use dotted decimal components. =:CAPABILITIES= and
+=:TOOLS= are bounded, duplicate-free string lists, with empty lists as defaults.
+Other fields are optional. Unknown and duplicate fields are rejected.
+
+=SKILL-EXECUTABLE-DISCOVER= accepts existing =SKILL-METADATA= and returns an
+executable declaration, or NIL when the optional sidecar is absent. Standard
+catalog discovery and instruction reading require no executable component.
+Executable discovery reads metadata only, without ASDF lookup, code loading,
+entrypoint resolution, or authority grants. A malformed existing sidecar signals
+=SKILL-EXECUTABLE-ERROR=; the host chooses how to display that diagnostic.
+
+=SKILL-EXECUTABLE-PATHNAME=, =SKILL-EXECUTABLE-DIGEST=, and
+=SKILL-EXECUTABLE-MANIFEST= expose the source and declaration. Digest and manifest
+readers return independent copies. The digest covers exact UTF-8 sidecar bytes.
+Fresh reads enforce root confinement, regular files and stable filesystem
+identity. Invocation rejects changed canonical paths, identities, or content,
+including changes made during authorization, loading or execution.
+
+#+begin_src lisp
+(let* ((catalog (cl-skills:skill-catalog-discover (list skills-root)))
+       (skill (cl-skills:skill-catalog-find catalog "release-notes"))
+       (executable (cl-skills:skill-executable-discover skill)))
+  (cl-skills:skill-executable-invoke
+   executable '(:object ("revision" "HEAD"))
+   :authorize #'application-authorize-skill
+   :loader #'application-load-skill-system
+   :context originating-request)
+  (cl-skills:skill-executable-verify
+   executable :authorize #'application-authorize-skill
+   :loader #'application-load-skill-system
+   :context originating-request))
+#+end_src
+
+=SKILL-EXECUTABLE-INVOKE= accepts executable metadata and portable tagged input,
+plus =:AUTHORIZE=, =:LOADER=, =:CONTEXT=, and =:CANCELLED-P= keywords. The entrypoint
+receives =(INPUT :CONTEXT CONTEXT)=. The primary result must satisfy the output
+contract. Portable values follow the provider contract API: objects are
+=(:object ("key" value) ...)=, arrays are =(:array ...)=, true is T, false is NIL,
+and null is =:null=. Return values are validated and copied through that API.
+
+The authorization callback receives =(EXECUTABLE :OPERATION OPERATION :CONTEXT
+CONTEXT)=. Return exactly T only after approving the declared systems,
+entrypoints, required capabilities and tool names. The library requires explicit
+authorization even for a declaration with empty requirements. The host must
+install and enforce the effective capability set separately, including within
+callbacks from worker-host facades.
+
+For declared systems or dependencies, supply a loader receiving =(SYSTEM-NAME
+:CONTEXT CONTEXT)=. Register trusted ASDF definitions before invoking, then load
+the named system in that callback. ASDF definition lookup occurs after
+authorization, with version checks before code loading and afterward. Loading
+an ASD can itself execute Lisp, so approve definitions as part of authorization.
+Declared dependencies are loaded before the principal system, once per name.
+
+=SKILL-EXECUTABLE-VERIFY= accepts the same callbacks and =:ENTRYPOINT=, defaulting
+to =:SELF-TEST=; select =:VERIFY= for the verification entrypoint. That function
+receives =(:CONTEXT CONTEXT)= and must return exactly T. Missing declarations,
+non-T results and errors signal typed failures. Verification is an explicit
+execution result, not an efficacy claim inferred from sidecar metadata.
+
+=:CANCELLED-P= is a cooperative zero-argument predicate checked around major
+execution boundaries. The host owns worker isolation, hard cancellation,
+timeouts, transport limits and tool policy. Bind the executable character,
+node and depth limit parameters to bound sidecar reads and portable invocation
+values; defaults are 32768 characters, 4096 nodes and depth 48. Names have a
+256-character bound and requirements/dependencies have 128-entry bounds.
+
+=SKILL-EXECUTABLE-ERROR-KIND= and =SKILL-EXECUTABLE-ERROR-PATHNAME= identify failures;
+=SKILL-EXECUTABLE-ERROR-CAUSE= retains an underlying condition when available.
+Categories include reader and filesystem failures, =:INVALID-VERSION=,
+=:INVALID-CONTRACT=, =:IDENTITY-CHANGED=, =:NOT-AUTHORIZED=,
+=:AUTHORIZATION-ERROR=, =:LOADER-REQUIRED=, =:MISSING-SYSTEM=,
+=:VERSION-MISMATCH=, =:SYSTEM-ERROR=, =:LOAD-ERROR=, =:MISSING-ENTRYPOINT=,
+=:INVALID-INPUT=, =:INVALID-OUTPUT=, =:INVOCATION-ERROR=,
+=:VERIFICATION-FAILED=, =:VERIFICATION-ERROR=, =:CANCELLATION-ERROR= and =:CANCELLED=.
+
 * Development
 
 #+begin_src sh
