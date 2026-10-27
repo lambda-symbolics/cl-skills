@@ -9,7 +9,7 @@
                (error (condition)
                  (skill-executable--fail (skill-executable-pathname executable)
                                          ':cancellation-error
-                                         "The cancellation predicate failed." condition))))
+                                         "The cancellation predicate failed." :cause condition))))
     (skill-executable--fail (skill-executable-pathname executable) ':cancelled
                             "Executable invocation was cancelled.")))
 
@@ -50,7 +50,7 @@ an unbounded list. This is a resource bound, not a second contract validator."
           (cl-llm-provider-api:output-json->sexp json))
       (skill-executable-error (condition) (error condition))
       (error (condition)
-        (skill-executable--fail pathname kind "Malformed portable invocation value." condition)))))
+        (skill-executable--fail pathname kind "Malformed portable invocation value." :cause condition)))))
 
 (defun skill-executable--resolve (executable declaration)
   "Resolve an existing function without reading or interning the declaration."
@@ -77,7 +77,7 @@ an unbounded list. This is a resource bound, not a second contract validator."
             (skill-executable--fail pathname ':version-mismatch "An ASDF system version does not satisfy the declaration.")))
       (skill-executable-error (condition) (error condition))
       (error (condition)
-        (skill-executable--fail pathname ':system-error "Could not resolve a declared ASDF system." condition)))))
+        (skill-executable--fail pathname ':system-error "Could not resolve a declared ASDF system." :cause condition)))))
 
 (defun skill-executable--prepare (executable &key authorize loader context operation cancelled-p)
   "Authorize, revalidate identity, check versions, and explicitly load declared systems."
@@ -92,7 +92,7 @@ an unbounded list. This is a resource bound, not a second contract validator."
                      (eq t (funcall authorize executable :operation operation :context context))
                    (error (condition)
                      (skill-executable--fail pathname ':authorization-error
-                                             "Executable authorization failed." condition))))
+                                             "Executable authorization failed." :cause condition))))
       (skill-executable--fail pathname ':not-authorized "Executable invocation requires explicit authorization."))
     (skill-executable--cancel executable cancelled-p)
     (skill-executable--fresh-p executable)
@@ -109,7 +109,7 @@ an unbounded list. This is a resource bound, not a second contract validator."
       (skill-executable--cancel executable cancelled-p)
       (handler-case (funcall loader name :context context)
         (error (condition)
-          (skill-executable--fail pathname ':load-error "The executable system loader failed." condition))))
+          (skill-executable--fail pathname ':load-error "The executable system loader failed." :cause condition))))
     ;; Loading may replace system definitions. Check the effective versions.
     (dolist (dependency dependencies)
       (skill-executable--check-version executable (first dependency) (second dependency) nil))
@@ -140,7 +140,7 @@ owns process supervision, timeouts and actual capability enforcement."
              (output   (handler-case (funcall function input :context context)
                          (error (condition)
                            (skill-executable--fail pathname ':invocation-error
-                                                   "The executable entrypoint failed." condition)))))
+                                                   "The executable entrypoint failed." :cause condition)))))
         (skill-executable--cancel executable cancelled-p)
         (skill-executable--fresh-p executable)
         (skill-executable--contract-value executable output ':output)))))
@@ -166,7 +166,7 @@ Verification is caller-requested execution, not a discovery-time efficacy claim.
                     (skill-executable-error (condition) (error condition))
                     (error (condition)
                       (skill-executable--fail pathname ':verification-error
-                                              "The verification entrypoint failed." condition)))))
+                                              "The verification entrypoint failed." :cause condition)))))
       (skill-executable--cancel executable cancelled-p)
       (skill-executable--fresh-p executable)
       (unless (eq result t)

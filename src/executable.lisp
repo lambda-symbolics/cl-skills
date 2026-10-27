@@ -57,7 +57,7 @@
   "Return a fresh copy of EXECUTABLE's content identity."
   (copy-seq (skill-executable--digest executable)))
 
-(defun skill-executable--fail (pathname kind message &optional cause)
+(defun skill-executable--fail (pathname kind message &key cause)
   "Signal a typed executable failure without including invocation payloads."
   (error 'skill-executable-error :pathname pathname :kind kind
          :message message :cause cause))
@@ -161,7 +161,7 @@
                    :maximum-depth *skill-executable-depth-limit* :property-name-limit 256)
                 (error (condition)
                   (skill-executable--fail pathname ':invalid-contract
-                                          "Invalid executable contract." condition))))))
+                                          "Invalid executable contract." :cause condition))))))
     manifest))
 
 (defun skill-executable--read (pathname roots)
@@ -170,7 +170,7 @@
       (skill--read-file-bounded pathname *skill-executable-character-limit* :roots roots)
     (skill--definition-error (condition)
       (skill-executable--fail pathname (skill--definition-error-kind condition)
-                              "Could not read executable sidecar." condition))))
+                              "Could not read executable sidecar." :cause condition))))
 
 (-> skill-executable-discover (skill-metadata) (option skill-executable))
 (defun skill-executable-discover (skill)
@@ -188,14 +188,14 @@ load an ASDF definition, resolve an entrypoint, or grant declared authority."
           (skill-executable--fail pathname ':identity-changed "The selected skill source moved."))
       (skill-executable-error (condition) (error condition))
       (error (condition)
-        (skill-executable--fail pathname ':identity-changed "The selected skill source is unavailable." condition)))
+        (skill-executable--fail pathname ':identity-changed "The selected skill source is unavailable." :cause condition)))
     ;; LSTAT distinguishes a missing sidecar from a dangling link or other
     ;; non-regular entry. The confined reader handles every existing candidate.
     (handler-case (ls-compat.posix:file-information pathname :follow-links-p nil)
       (ls-compat.posix:file-operation-failed (condition)
         (if (eq (ls-compat.posix:file-operation-failed-reason condition) ':missing)
             (return-from skill-executable-discover nil)
-            (skill-executable--fail pathname ':read-error "Could not inspect executable sidecar." condition))))
+            (skill-executable--fail pathname ':read-error "Could not inspect executable sidecar." :cause condition))))
     (multiple-value-bind (text canonical identity) (skill-executable--read pathname roots)
       (let* ((grammar (make-source-grammar
                        :label "EXECUTABLE.sexp" :keywords *skill-executable-keywords*
@@ -209,7 +209,7 @@ load an ASDF definition, resolve an entrypoint, or grant declared authority."
              (form    (handler-case (read-source text grammar)
                         (sexp-config-error (condition)
                           (skill-executable--fail pathname (sexp-config-error-kind condition)
-                                                  "Invalid executable sidecar data." condition)))))
+                                                  "Invalid executable sidecar data." :cause condition)))))
         (make-instance 'skill-executable :pathname pathname :canonical-pathname canonical
                        :identity identity :digest (skill-source-digest text)
                        :manifest (skill-executable--validate form pathname) :skill skill)))))
@@ -224,7 +224,7 @@ load an ASDF definition, resolve an entrypoint, or grant declared authority."
           (skill-executable--fail pathname ':identity-changed "The selected skill source moved."))
       (skill-executable-error (condition) (error condition))
       (error (condition)
-        (skill-executable--fail pathname ':identity-changed "The selected skill source is unavailable." condition)))
+        (skill-executable--fail pathname ':identity-changed "The selected skill source is unavailable." :cause condition)))
     (multiple-value-bind (text canonical identity)
         (skill-executable--read pathname (skill-metadata--confinement-roots skill))
       (unless (and (equal canonical (skill-executable--canonical-pathname executable))
