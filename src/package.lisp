@@ -1,4 +1,5 @@
 (defpackage #:cl-skills
+  (:documentation "Discover, parse, cache, and render portable Agent Skills.")
   (:use #:cl)
   (:import-from #:ironclad
                 #:digest-sequence)

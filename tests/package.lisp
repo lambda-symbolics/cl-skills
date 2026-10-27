@@ -1,4 +1,5 @@
 (defpackage #:cl-skills/tests
+  (:documentation "Tests for cl-skills discovery, parsing, caching, rendering, and executable Skills.")
   (:use #:cl)
   (:import-from #:cl-skills
                 #:*skill-description-character-limit*
