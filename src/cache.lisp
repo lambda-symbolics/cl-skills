@@ -79,10 +79,11 @@
   pathname)
 
 (-> skill--agent-cache-read
-    (pathname pathname string (integer 1))
+    (pathname pathname
+     &key (:source-digest string) (:instruction-character-limit (integer 1)))
     (values (option string) (option string) (option string) boolean))
 (defun skill--agent-cache-read
-    (pathname cache-root source-digest instruction-character-limit)
+    (pathname cache-root &key source-digest instruction-character-limit)
   "Return integrity-checked cached native values and true, or four NIL values."
   (handler-case
       (multiple-value-bind
@@ -147,8 +148,8 @@
                 (skill--agent-cache-read
                  cache-pathname
                  cache-root
-                 digest
-                 instruction-character-limit)
+                 :source-digest               digest
+                 :instruction-character-limit instruction-character-limit)
                 (values nil nil nil nil))
           (if cached-p
               (values (skill--validate-agent-name name pathname)
