@@ -62,7 +62,7 @@ an unbounded list. This is a resource bound, not a second contract validator."
                               "The declared callable entrypoint is unavailable."))
     (symbol-function symbol)))
 
-(defun skill-executable--check-version (executable name required exact-p)
+(defun skill-executable--check-version (executable name &key required exact-p)
   "Check an authorized ASDF system definition before loading its code."
   (let ((pathname (skill-executable-pathname executable)))
     (handler-case
@@ -101,9 +101,11 @@ an unbounded list. This is a resource bound, not a second contract validator."
     ;; ASDF definition lookup can execute an ASD. Perform it only after the
     ;; caller has authorized this invocation, never during discovery.
     (dolist (dependency dependencies)
-      (skill-executable--check-version executable (first dependency) (second dependency) nil))
+      (skill-executable--check-version executable (first dependency) :required (second dependency)))
     (when system
-      (skill-executable--check-version executable system (getf manifest :system-version) t))
+      (skill-executable--check-version executable system
+                                     :required (getf manifest :system-version)
+                                     :exact-p  t))
     (dolist (name (remove-duplicates (append (mapcar #'first dependencies) (when system (list system)))
                                    :test #'string=))
       (skill-executable--cancel executable cancelled-p)
@@ -112,9 +114,11 @@ an unbounded list. This is a resource bound, not a second contract validator."
           (skill-executable--fail pathname ':load-error "The executable system loader failed." :cause condition))))
     ;; Loading may replace system definitions. Check the effective versions.
     (dolist (dependency dependencies)
-      (skill-executable--check-version executable (first dependency) (second dependency) nil))
+      (skill-executable--check-version executable (first dependency) :required (second dependency)))
     (when system
-      (skill-executable--check-version executable system (getf manifest :system-version) t))
+      (skill-executable--check-version executable system
+                                     :required (getf manifest :system-version)
+                                     :exact-p  t))
     (skill-executable--cancel executable cancelled-p)
     (skill-executable--fresh-p executable)))
 
