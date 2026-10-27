@@ -26,7 +26,8 @@
   :serial      t
   :components  ((:module     "tests"
                  :serial     t
-                 :components ((:file "tests"))))
+                 :components ((:file "package")
+                              (:file "tests"))))
   :perform     (asdf:test-op (operation component)
                  (declare (ignore operation component))
                  (uiop:symbol-call '#:cl-skills/tests '#:run-tests)))

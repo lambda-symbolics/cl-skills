@@ -1,8 +1,3 @@
-(defpackage #:cl-skills/tests
-  (:use #:cl #:cl-skills)
-  (:import-from #:serapeum
-                #:partial))
-
 (in-package #:cl-skills/tests)
 
 (defvar *test-count* 0

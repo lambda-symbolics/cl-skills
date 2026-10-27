@@ -1,5 +1,21 @@
 (in-package #:cl-skills/tests)
 
+;; cl-skills/executable exports these symbols only when it loads, after the
+;; test package exists, so the executable tests import them here.
+(eval-when (:compile-toplevel :load-toplevel :execute)
+  (import '(cl-skills:*skill-executable-character-limit*
+            cl-skills:*skill-executable-depth-limit*
+            cl-skills:*skill-executable-node-limit*
+            cl-skills:skill-executable
+            cl-skills:skill-executable-digest
+            cl-skills:skill-executable-discover
+            cl-skills:skill-executable-error
+            cl-skills:skill-executable-error-kind
+            cl-skills:skill-executable-error-pathname
+            cl-skills:skill-executable-invoke
+            cl-skills:skill-executable-manifest
+            cl-skills:skill-executable-verify)))
+
 (defvar *executable-call-count* 0
   "Calls executed by the invocation fixture.")
 
