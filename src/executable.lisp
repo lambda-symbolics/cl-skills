@@ -111,7 +111,7 @@
         (allowed '(:format-version :skill-version :system :system-version
                    :entrypoint :self-test :verify :dependencies :capabilities
                    :tools :input :output)))
-    (loop for tail on manifest by #'cddr for key = (first tail) do
+    (loop for tail on manifest by (partial #'nthcdr 2) for key = (first tail) do
       (unless (member key allowed)
         (skill-executable--fail pathname ':unknown-field "Unknown executable field."))
       (when (member key seen)

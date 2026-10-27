@@ -42,7 +42,7 @@
                     :input (:type :string) :output (:type :string)
                     :capabilities ("read") :tools ("resource.read"))))
     (setf manifest (copy-tree manifest))
-    (loop for (key value) on fields by #'cddr do (setf (getf manifest key) value))
+    (loop for (key value) on fields by (partial #'nthcdr 2) do (setf (getf manifest key) value))
     (prin1-to-string (cons ':skill-executable manifest))))
 
 (defun tests--executable-skill (root &optional (source (tests--executable-form)))

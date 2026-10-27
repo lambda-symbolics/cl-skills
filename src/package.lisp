@@ -11,7 +11,8 @@
                 #:source-grammar
                 #:validate-tree)
   (:import-from #:serapeum
-                #:->)
+                #:->
+                #:partial)
   (:export
    #:*skill-agent-cache-character-limit*
    #:*skill-catalog-character-budget*

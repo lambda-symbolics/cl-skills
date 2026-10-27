@@ -1,5 +1,7 @@
 (defpackage #:cl-skills/tests
-  (:use #:cl #:cl-skills))
+  (:use #:cl #:cl-skills)
+  (:import-from #:serapeum
+                #:partial))
 
 (in-package #:cl-skills/tests)
 
