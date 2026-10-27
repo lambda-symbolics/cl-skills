@@ -66,8 +66,12 @@
            (uiop:rename-file-overwriting-target temporary pathname)
            (setf (ls-compat.posix:file-mode pathname) #o600)
            pathname)
+      ;; A temporary file left behind does no harm, so a failed removal
+      ;; must not replace the outcome of the write.
       (when (probe-file temporary)
-        (ignore-errors (delete-file temporary))))))
+        (handler-case (delete-file temporary)
+          (file-error ()
+            nil))))))
 
 (-> skill--agent-cache-write (pathname string string) pathname)
 (defun skill--agent-cache-write (pathname content source-digest)
