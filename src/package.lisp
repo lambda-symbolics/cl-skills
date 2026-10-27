@@ -68,18 +68,3 @@
    #:skill-validation-error-kind
    #:skill-validation-error-pathname
    #:skill-standard-cache-pathname))
-
-(in-package #:cl-skills)
-
-(deftype option (inner-type)
-  "A value that is either NIL or an instance of INNER-TYPE."
-  `(or null ,inner-type))
-
-(deftype non-empty-string ()
-  "A string containing at least one character."
-  '(and string (satisfies string-not-empty-p)))
-
-(defun string-not-empty-p (value)
-  "Return true when VALUE is a non-empty string."
-  (and (stringp value)
-       (plusp (length value))))

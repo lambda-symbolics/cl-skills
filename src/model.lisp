@@ -46,6 +46,19 @@
 
 ;;;; -- Value Model --
 
+(deftype option (inner-type)
+  "A value that is either NIL or an instance of INNER-TYPE."
+  `(or null ,inner-type))
+
+(deftype non-empty-string ()
+  "A string containing at least one character."
+  '(and string (satisfies string-not-empty-p)))
+
+(defun string-not-empty-p (value)
+  "Return true when VALUE is a non-empty string."
+  (and (stringp value)
+       (plusp (length value))))
+
 (deftype skill-source-format ()
   "The source representation backing one discovered skill."
   '(member :native :agent-skill))
