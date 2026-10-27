@@ -184,7 +184,7 @@
                "#.(error \"reader evaluation escaped\")")
               (:invalid-syntax
                "(:autolith-skill :version 1 :name \"x\" :description \"d\" :instructions \"i\") extra"))))
-      (loop for (expected source) in cases
+      (loop for (nil source) in cases
             for index from 0
             do (tests--write root (format nil "case-~D/SKILL.sexp" index) source))
       (let ((kinds (tests--kinds (skill-catalog-discover (list root)))))
@@ -394,7 +394,7 @@
                ,(format nil "---~%name: empty-description~%description: '  '~%---~%Body"))
               (:accepted-empty-body "empty-body/SKILL.md"
                ,(format nil "---~%name: empty-body~%description: Empty body~%---~%")))))
-      (loop for (expected relative source) in cases
+      (loop for (nil relative source) in cases
             do (tests--write root relative source))
       (let ((kinds (tests--kinds (skill-catalog-discover (list root)))))
         (dolist (case cases)
