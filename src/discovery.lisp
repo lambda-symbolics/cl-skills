@@ -100,8 +100,8 @@ directory listing."
           (values nil nil t entry-limit nil)
           (progn
             (dolist (entry entries)
-              (let ((name (car entry))
-                    (kind (cdr entry)))
+              (let ((name (first entry))
+                    (kind (rest entry)))
                 (let ((pathname (skill--directory-entry-pathname directory name)))
                   (case kind
                     (:directory
