@@ -1,5 +1,6 @@
 (in-package #:cl-skills)
 
+(-> skill--catalog-prefix () string)
 (defun skill--catalog-prefix ()
   "Return the fixed model-visible skill catalog introduction."
   (format nil

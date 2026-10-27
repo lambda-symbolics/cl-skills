@@ -54,6 +54,7 @@
   "A string containing at least one character."
   '(and string (satisfies string-not-empty-p)))
 
+(-> string-not-empty-p (t) boolean)
 (defun string-not-empty-p (value)
   "Return true when VALUE is a non-empty string."
   (and (stringp value)

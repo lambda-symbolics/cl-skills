@@ -57,6 +57,9 @@
   "Return a fresh copy of EXECUTABLE's content identity."
   (copy-seq (skill-executable--digest executable)))
 
+(-> skill-executable--fail
+    (pathname keyword string &key (:cause (option condition)))
+    nil)
 (defun skill-executable--fail (pathname kind message &key cause)
   "Signal a typed executable failure without including invocation payloads."
   (error 'skill-executable-error :pathname pathname :kind kind
@@ -75,22 +78,26 @@
                 value))))
     (copy (skill-executable--manifest executable))))
 
+(-> skill-executable--string-p (t) boolean)
 (defun skill-executable--string-p (value)
   "Return true for bounded non-empty metadata strings without control characters."
   (and (stringp value) (<= 1 (length value) 256)
        (every (lambda (character) (>= (char-code character) 32)) value)))
 
+(-> skill-executable--names-p (t) boolean)
 (defun skill-executable--names-p (values)
   "Return true for a bounded duplicate-free list of metadata names."
   (and (listp values) (<= (length values) 128)
        (every #'skill-executable--string-p values)
        (= (length values) (length (remove-duplicates values :test #'string=)))))
 
+(-> skill-executable--entrypoint-p (t) boolean)
 (defun skill-executable--entrypoint-p (value)
   "Return true for a (package-name symbol-name) declaration, without interning."
   (and (listp value) (= (length value) 2)
        (every #'skill-executable--string-p value)))
 
+(-> skill-executable--version-p (t) boolean)
 (defun skill-executable--version-p (value)
   "Return true for the dotted decimal version syntax supported by ASDF."
   (and (skill-executable--string-p value)
@@ -101,6 +108,7 @@
                         (and (char= character #\.) (plusp index)
                              (not (null (digit-char-p (char value (1- index))))))))))
 
+(-> skill-executable--validate (t pathname) list)
 (defun skill-executable--validate (form pathname)
   "Validate a safely-read sidecar and reuse provider contract normalization."
   (unless (and (consp form) (eq (first form) ':skill-executable)
@@ -164,6 +172,7 @@
                                           "Invalid executable contract." :cause condition))))))
     manifest))
 
+(-> skill-executable--read (pathname list) (values string pathname t))
 (defun skill-executable--read (pathname roots)
   "Read a confined regular sidecar with the existing stable-identity reader."
   (handler-case
@@ -214,6 +223,7 @@ load an ASDF definition, resolve an entrypoint, or grant declared authority."
                        :identity identity :digest (skill-source-digest text)
                        :manifest (skill-executable--validate form pathname) :skill skill)))))
 
+(-> skill-executable--fresh-p (skill-executable) boolean)
 (defun skill-executable--fresh-p (executable)
   "Reject path, filesystem identity or content changes after discovery."
   (let* ((pathname (skill-executable-pathname executable))

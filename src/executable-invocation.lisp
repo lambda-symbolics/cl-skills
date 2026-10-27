@@ -2,6 +2,7 @@
 
 ;;;; -- Authorized Invocation --
 
+(-> skill-executable--cancel (skill-executable t) null)
 (defun skill-executable--cancel (executable cancelled-p)
   "Signal cancellation or predicate failure at a cooperative invocation boundary."
   (when (and cancelled-p
@@ -13,6 +14,7 @@
     (skill-executable--fail (skill-executable-pathname executable) ':cancelled
                             "Executable invocation was cancelled.")))
 
+(-> skill-executable--bounded-value (skill-executable t keyword) boolean)
 (defun skill-executable--bounded-value (executable value kind)
   "Bound portable value traversal before delegating contract conversion.
 
@@ -37,6 +39,7 @@ an unbounded list. This is a resource bound, not a second contract validator."
                     (skill-executable--fail pathname kind "Invocation value exceeds character bounds."))))))
       (visit value 0))))
 
+(-> skill-executable--contract-value (skill-executable t keyword) t)
 (defun skill-executable--contract-value (executable value key)
   "Return fresh normalized tagged VALUE satisfying the declared KEY contract."
   (let ((kind     (if (eq key ':input) ':invalid-input ':invalid-output))
@@ -52,6 +55,7 @@ an unbounded list. This is a resource bound, not a second contract validator."
       (error (condition)
         (skill-executable--fail pathname kind "Malformed portable invocation value." :cause condition)))))
 
+(-> skill-executable--resolve (skill-executable list) function)
 (defun skill-executable--resolve (executable declaration)
   "Resolve an existing function without reading or interning the declaration."
   (let* ((package (find-package (first declaration)))
@@ -62,6 +66,9 @@ an unbounded list. This is a resource bound, not a second contract validator."
                               "The declared callable entrypoint is unavailable."))
     (symbol-function symbol)))
 
+(-> skill-executable--check-version
+    (skill-executable string &key (:required (option string)) (:exact-p boolean))
+    null)
 (defun skill-executable--check-version (executable name &key required exact-p)
   "Check an authorized ASDF system definition before loading its code."
   (let ((pathname (skill-executable-pathname executable)))
@@ -79,6 +86,10 @@ an unbounded list. This is a resource bound, not a second contract validator."
       (error (condition)
         (skill-executable--fail pathname ':system-error "Could not resolve a declared ASDF system." :cause condition)))))
 
+(-> skill-executable--prepare
+    (skill-executable
+     &key (:authorize t) (:loader t) (:context t) (:operation keyword) (:cancelled-p t))
+    boolean)
 (defun skill-executable--prepare (executable &key authorize loader context operation cancelled-p)
   "Authorize, revalidate identity, check versions, and explicitly load declared systems."
   (let* ((manifest     (skill-executable--manifest executable))
