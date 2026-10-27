@@ -12,10 +12,10 @@
     (&key kind pathname root-index message)
   "Return one structured diagnostic for PATHNAME in ROOT-INDEX."
   (make-instance 'skill-diagnostic
-                 :kind kind
-                 :pathname pathname
+                 :kind       kind
+                 :pathname   pathname
                  :root-index root-index
-                 :message message))
+                 :message    message))
 
 (-> skill--pathname< (pathname pathname) boolean)
 (defun skill--pathname< (left right)
@@ -91,8 +91,8 @@ value is the number of entries retained toward the aggregate scan budget. The
 fifth value contains unresolved symbolic links.
 Enumeration stops after the first excess entry and never retains an unbounded
 directory listing."
-  (let ((files nil)
-        (subdirectories nil)
+  (let ((files            nil)
+        (subdirectories   nil)
         (unresolved-links nil))
     (multiple-value-bind (entries exceeded-p)
         (ls-compat.posix:directory-entries directory :limit entry-limit)
@@ -146,22 +146,22 @@ directory listing."
        (max-entries *skill-scan-entry-limit*)
        confinement-roots)
   "Return sorted skill definition paths and diagnostics found beneath ROOT."
-  (let ((root (uiop:ensure-directory-pathname root))
-        (canonical-root nil)
+  (let ((root                        (uiop:ensure-directory-pathname root))
+        (canonical-root              nil)
         (canonical-confinement-roots nil)
-        (paths nil)
-        (diagnostics nil)
-        (visited (make-hash-table :test #'equal))
-        (directory-count 0)
-        (entry-count 0)
-        (stopped-p nil))
+        (paths                       nil)
+        (diagnostics                 nil)
+        (visited                     (make-hash-table :test #'equal))
+        (directory-count             0)
+        (entry-count                 0)
+        (stopped-p                   nil))
     (labels
         ((record-diagnostic (kind pathname message)
            (push (skill--diagnostic
-                  :kind kind
-                  :pathname pathname
+                  :kind       kind
+                  :pathname   pathname
                   :root-index root-index
-                  :message message)
+                  :message    message)
                  diagnostics))
 
          (stop-scan (kind pathname message)
@@ -201,14 +201,14 @@ directory listing."
                          nil))))
                (unless canonical
                  (return))
-                (unless (skill--pathname-confined-p
-                         canonical
-                         canonical-confinement-roots)
-                  (record-diagnostic
-                   :outside-root
-                   directory
-                   "Skill discovery did not follow a directory outside its configured canonical roots.")
-                  (return))
+               (unless (skill--pathname-confined-p
+                        canonical
+                        canonical-confinement-roots)
+                 (record-diagnostic
+                  :outside-root
+                  directory
+                  "Skill discovery did not follow a directory outside its configured canonical roots.")
+                 (return))
                (let ((identity (namestring canonical)))
                  (when (gethash identity visited)
                    (return))
@@ -286,5 +286,3 @@ directory listing."
             (nreverse diagnostics)
             directory-count
             entry-count)))
-
-

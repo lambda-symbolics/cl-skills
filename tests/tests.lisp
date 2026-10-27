@@ -31,7 +31,7 @@
           (progn ,@body)
        (when (probe-file ,root)
          (uiop:delete-directory-tree ,root
-                                     :validate t
+                                     :validate          t
                                      :if-does-not-exist ':ignore)))))
 
 (defun tests--write (root relative content)
@@ -39,10 +39,10 @@
   (let ((pathname (merge-pathnames relative root)))
     (ensure-directories-exist pathname)
     (with-open-file (stream pathname
-                            :direction ':output
-                            :if-exists ':supersede
+                            :direction         ':output
+                            :if-exists         ':supersede
                             :if-does-not-exist ':create
-                            :external-format ':utf-8)
+                            :external-format   ':utf-8)
       (write-string content stream))
     pathname))
 
@@ -54,10 +54,10 @@
                         (sb-ext:native-namestring directory)
                         name))))
     (with-open-file (stream pathname
-                            :direction ':output
-                            :if-exists ':supersede
+                            :direction         ':output
+                            :if-exists         ':supersede
                             :if-does-not-exist ':create
-                            :external-format ':utf-8)
+                            :external-format   ':utf-8)
       (write-string content stream))
     pathname))
 
@@ -107,7 +107,7 @@
 (defun test-discovery-and-precedence ()
   "Test deterministic traversal, parsing, precedence, and fresh reads."
   (with-test-root (root)
-    (let ((primary (merge-pathnames "primary/" root))
+    (let ((primary   (merge-pathnames "primary/" root))
           (secondary (merge-pathnames "secondary/" root)))
       (tests--write primary "standard/SKILL.md"
                     (tests--standard "standard" "Standard skill." "Body B\n"))
@@ -127,8 +127,8 @@
       (tests--write secondary "z/SKILL.sexp"
                     (tests--native "zeta" "Last." "Body Z"))
       (let* ((catalog (skill-catalog-discover (list primary secondary)))
-             (kinds (tests--kinds catalog))
-             (alpha (skill-catalog-find catalog "alpha")))
+             (kinds   (tests--kinds catalog))
+             (alpha   (skill-catalog-find catalog "alpha")))
         (test-assert
          (equal (tests--names catalog)
                 '("alpha" "same" "standard" "zeta"))
@@ -218,8 +218,8 @@
     (with-test-root (outside)
       (let* ((target (tests--write outside "SKILL.sexp"
                                   (tests--native "outside" "Outside." "Body")))
-             (link (merge-pathnames "linked/SKILL.sexp" root))
-             (fifo (merge-pathnames "fifo/SKILL.sexp" root)))
+             (link   (merge-pathnames "linked/SKILL.sexp" root))
+             (fifo   (merge-pathnames "fifo/SKILL.sexp" root)))
         (ensure-directories-exist link)
         (sb-posix:symlink (namestring target) (namestring link))
         (ensure-directories-exist fifo)
@@ -229,7 +229,7 @@
                        "source symlinks cannot escape their canonical root")
           (test-assert (member ':not-regular-file kinds)
                        "non-regular exact source candidates fail closed"))))
-    (let* ((broken (merge-pathnames "broken/SKILL.md" root))
+    (let* ((broken  (merge-pathnames "broken/SKILL.md" root))
            (missing (merge-pathnames "missing-target" root)))
       (ensure-directories-exist broken)
       (sb-posix:symlink (namestring missing) (namestring broken))
@@ -241,24 +241,24 @@
 (defun test-canonical-discovery-roots ()
   "Test root aliases, component boundaries, and missing discovery roots."
   (with-test-root (parent)
-    (let* ((root (merge-pathnames "skills/" parent))
+    (let* ((root    (merge-pathnames "skills/" parent))
            (sibling (merge-pathnames "skills-extra/" parent))
-           (alias (merge-pathnames "alias" parent))
+           (alias   (merge-pathnames "alias" parent))
            (missing (merge-pathnames "missing/" parent))
-           (source (tests--write root "SKILL.sexp"
-                                 (tests--native "inside" "Inside." "Inside body")))
+           (source  (tests--write root "SKILL.sexp"
+                                  (tests--native "inside" "Inside." "Inside body")))
            (outside (tests--write sibling "SKILL.sexp"
                                   (tests--native "outside" "Outside." "Outside body")))
-           (link (merge-pathnames "linked/SKILL.sexp" root)))
+           (link    (merge-pathnames "linked/SKILL.sexp" root)))
       (ensure-directories-exist link)
       (sb-posix:symlink (sb-ext:native-namestring outside)
                         (sb-ext:native-namestring link))
       (sb-posix:symlink (sb-ext:native-namestring root)
                         (sb-ext:native-namestring alias))
       (dolist (discovery-root (list root (uiop:ensure-directory-pathname alias)))
-        (let* ((catalog (skill-catalog-discover (list discovery-root missing)))
+        (let* ((catalog  (skill-catalog-discover (list discovery-root missing)))
                (metadata (skill-catalog-find catalog "inside"))
-               (kinds (tests--kinds catalog)))
+               (kinds    (tests--kinds catalog)))
           (test-assert (equal (tests--names catalog) '("inside"))
                        "a canonical or aliased root admits only its own source")
           (test-assert
@@ -292,16 +292,16 @@
   (with-test-root (primary)
     (with-test-root (secondary)
       (with-test-root (outside)
-        (let* ((target-directory (merge-pathnames "shared/" secondary))
+        (let* ((target-directory  (merge-pathnames "shared/" secondary))
                (outside-directory (merge-pathnames "escaped/" outside))
-               (link (merge-pathnames "linked" primary)))
+               (link              (merge-pathnames "linked" primary)))
           (tests--write target-directory "SKILL.sexp"
                         (tests--native "linked" "Linked." "Linked body"))
           (tests--write outside-directory "SKILL.sexp"
                         (tests--native "escaped" "Escaped." "Outside body"))
           (sb-posix:symlink (sb-ext:native-namestring target-directory)
                             (sb-ext:native-namestring link))
-          (let* ((catalog (skill-catalog-discover (list primary secondary)))
+          (let* ((catalog  (skill-catalog-discover (list primary secondary)))
                  (metadata (skill-catalog-find catalog "linked")))
             (test-assert metadata
                          "a skill directory may link into another configured root")
@@ -364,7 +364,7 @@
                     (format nil
                             "---~%name: valid-skill~%description: A valid standard skill.~%license: COLL-Attribution~%compatibility: SBCL~%metadata:~%  owner: lambda-symbolics~%allowed-tools: read write~%---~%~A"
                             body))
-      (let* ((catalog (skill-catalog-discover (list root)))
+      (let* ((catalog  (skill-catalog-discover (list root)))
              (metadata (skill-catalog-find catalog "valid-skill")))
         (test-assert metadata "valid standard Skill is discovered")
         (test-assert (eq (skill-metadata-source-format metadata) ':agent-skill)
@@ -415,8 +415,8 @@
     (let ((*skill-instruction-character-limit* 4))
       (tests--write root "instruction-limit/SKILL.md"
                     (tests--standard "instruction-limit" "Valid" "12345"))
-      (let* ((catalog (skill-catalog-discover (list root)))
-             (metadata (skill-catalog-find catalog "instruction-limit"))
+      (let* ((catalog   (skill-catalog-discover (list root)))
+             (metadata  (skill-catalog-find catalog "instruction-limit"))
              (bounded-p nil))
         (handler-case
             (skill-metadata-read metadata)
@@ -429,13 +429,13 @@
   "Test content addressing, manifests, integrity checks, and regeneration."
   (with-test-root (root)
     (with-test-root (cache-root)
-      (let* ((source (tests--standard "cached" "Cached skill." (format nil "Initial body~%")))
-             (digest (skill-source-digest source))
+      (let* ((source         (tests--standard "cached" "Cached skill." (format nil "Initial body~%")))
+             (digest         (skill-source-digest source))
              (expected-cache (skill-standard-cache-pathname cache-root digest))
-             (catalog (progn
-                        (tests--write root "cached/SKILL.md" source)
-                        (skill-catalog-discover (list root) :cache-root cache-root)))
-             (metadata (skill-catalog-find catalog "cached")))
+             (catalog        (progn
+                               (tests--write root "cached/SKILL.md" source)
+                               (skill-catalog-discover (list root) :cache-root cache-root)))
+             (metadata       (skill-catalog-find catalog "cached")))
         (test-assert (= (length digest) 64) "source digest is lowercase SHA-256")
         (test-assert (every (lambda (character)
                               (or (digit-char-p character)
@@ -452,8 +452,8 @@
         (test-assert (string= (skill-metadata-read metadata) (format nil "Initial body~%"))
                      "cached standard instructions read correctly")
         (let ((cache-source (uiop:read-file-string expected-cache))
-              (manifest (uiop:read-file-string
-                         (tests--manifest-pathname expected-cache))))
+              (manifest     (uiop:read-file-string
+                             (tests--manifest-pathname expected-cache))))
           (test-assert (search ":autolith-skill" cache-source)
                        "conversion cache contains the native representation")
           (test-assert (search (format nil "source ~A" digest) manifest)
@@ -467,7 +467,7 @@
                  (sb-posix:stat-ino
                   (sb-posix:stat (namestring expected-cache))))
                (reloaded (skill-catalog-discover (list root) :cache-root cache-root))
-               (fresh (skill-catalog-find reloaded "cached")))
+               (fresh    (skill-catalog-find reloaded "cached")))
           (test-assert fresh "corrupt cache regenerates from source")
           (test-assert (string= (skill-metadata-read fresh) (format nil "Initial body~%"))
                        "regenerated cache returns original instructions")
@@ -479,7 +479,7 @@
                (sb-posix:stat-ino
                 (sb-posix:stat (namestring expected-cache))))
            "corrupt cache regeneration atomically replaces its inode"))
-        (let* ((changed (tests--standard "cached" "Cached skill." "Changed body"))
+        (let* ((changed        (tests--standard "cached" "Cached skill." "Changed body"))
                (changed-digest (skill-source-digest changed))
                (changed-cache
                  (skill-standard-cache-pathname cache-root changed-digest)))
@@ -520,13 +520,13 @@
                      "catalog never retains native instructions")
         (test-assert (not (search "Autolith" rendered))
                      "catalog rendering is application neutral")
-        (let ((prefix (format nil "CUSTOM PREFIX~%"))
+        (let ((prefix   (format nil "CUSTOM PREFIX~%"))
               (guidance (format nil "~%CUSTOM GUIDANCE")))
           (multiple-value-bind
                 (custom custom-included custom-omitted)
               (skill-catalog-render
                catalog
-               :prefix prefix
+               :prefix   prefix
                :guidance guidance)
             (test-assert
              (and
@@ -628,9 +628,9 @@
         (let* ((pathname (merge-pathnames (if (eq format ':native)
                                              "alpha/SKILL.sexp"
                                              "alpha/SKILL.md") root))
-               (source (if (eq format ':native)
-                           (tests--native "alpha" "A   description." body)
-                           (tests--standard "alpha" "A   description." body))))
+               (source   (if (eq format ':native)
+                             (tests--native "alpha" "A   description." body)
+                             (tests--standard "alpha" "A   description." body))))
           (multiple-value-bind (name description instructions)
               (skill-source-validate source pathname)
             (test-assert (string= name "alpha") "validation returns the source name")
@@ -641,8 +641,8 @@
                    "source validation creates no files or directories"))
     (let ((pathname (merge-pathnames "alpha/SKILL.md" root)))
       (test-assert (string= (third (multiple-value-list
-                                   (skill-source-validate
-                                    (tests--standard "alpha" "Empty body." "") pathname))) "")
+                                    (skill-source-validate
+                                     (tests--standard "alpha" "Empty body." "") pathname))) "")
                    "standard skills permit empty instructions")
       (dolist (case (list
                      (list "SKILL.md" "Missing frontmatter" ':invalid-syntax)
@@ -653,7 +653,7 @@
                      (list "alpha/SKILL.sexp" (tests--native "alpha" "D" "") ':invalid-instructions)
                      (list "alpha/SKILL.sexp" "#.(error \"reader evaluation\")" ':invalid-syntax)
                      (list "alpha/skill.md" (tests--standard "alpha" "D" "Body") ':invalid-structure)))
-        (let* ((target (merge-pathnames (first case) root))
+        (let* ((target    (merge-pathnames (first case) root))
                (condition (handler-case
                               (progn (skill-source-validate (second case) target) nil)
                             (skill-validation-error (condition) condition))))
@@ -687,7 +687,7 @@
                        "exact metadata supports ordinary instruction reads"))
         (tests--write root "alpha/SKILL.sexp" (tests--native "renamed" "Second" "New"))
         (test-assert (string= "renamed" (skill-metadata-name
-                                       (skill-metadata-discover pathname root)))
+                                         (skill-metadata-discover pathname root)))
                      "exact discovery rereads current source")
         (multiple-value-bind (metadata diagnostic)
             (skill-metadata-discover

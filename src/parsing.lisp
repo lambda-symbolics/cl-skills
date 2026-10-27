@@ -6,9 +6,9 @@
 (defun skill--definition-fail (kind control &rest arguments)
   "Signal one internal skill definition failure of KIND."
   (error 'skill--definition-error
-         :kind kind
+         :kind                   kind
          :source-character-count *skill-definition-source-character-count*
-         :message (apply #'format nil control arguments)))
+         :message                (apply #'format nil control arguments)))
 
 (-> skill--read-file-bounded
     (pathname (integer 1) &key (:roots list))
@@ -21,7 +21,7 @@ filesystem identity of the file read. Opening never blocks, so a FIFO or other
 non-regular candidate cannot stall discovery. When ROOTS is non-NIL, the file
 must resolve beneath one of those configured roots."
   (handler-case
-      (let* ((canonical (ls-compat.posix:canonical-pathname pathname))
+      (let* ((canonical       (ls-compat.posix:canonical-pathname pathname))
              (canonical-roots (skill--canonical-roots roots)))
         (when (and roots
                    (not
@@ -45,8 +45,8 @@ must resolve beneath one of those configured roots."
                     (handler-case
                         (ls-compat.posix:open-regular-file
                          pathname
-                         :follow-links-p t
-                         :element-type 'character
+                         :follow-links-p  t
+                         :element-type    'character
                          :external-format ':utf-8)
                       (ls-compat.posix:not-regular-file ()
                         (skill--definition-fail
@@ -81,7 +81,7 @@ must resolve beneath one of those configured roots."
                     (setf *skill-definition-source-character-count*
                           character-limit)
                     (let* ((buffer (make-string (1+ character-limit)))
-                           (count (read-sequence buffer stream)))
+                           (count  (read-sequence buffer stream)))
                       (setf *skill-definition-source-character-count* count)
                       (when (> count character-limit)
                         (skill--definition-fail
@@ -110,22 +110,27 @@ bound policy takes effect without reloading this file. Charging list length to
 the depth budget keeps one bound over both nesting and length, and withholding
 COMMON-LISP from the reader package keeps a bare symbol from naming anything."
   (make-source-grammar
-   :label "SKILL.sexp"
-   :keywords *skill-native-keywords*
-   :maximum-depth *skill-form-depth-limit*
-   :maximum-nodes *skill-form-node-limit*
-   :list-tails-increase-depth-p t
+   :label                           "SKILL.sexp"
+   :keywords                        *skill-native-keywords*
+   :maximum-depth                   *skill-form-depth-limit*
+   :maximum-nodes                   *skill-form-node-limit*
+   :list-tails-increase-depth-p     t
    :common-lisp-symbols-permitted-p nil))
 
 (-> skill--source-diagnostic-kind (sexp-config-error) skill-diagnostic-kind)
 (defun skill--source-diagnostic-kind (condition)
   "Return the skill diagnostic kind reporting CONDITION."
   (case (sexp-config-error-kind condition)
-    (:unknown-field ':unknown-field)
-    (:data-too-deep ':data-too-deep)
-    (:data-too-large ':data-too-large)
-    ((:invalid-structure :invalid-value) ':invalid-structure)
-    (otherwise ':invalid-syntax)))
+    (:unknown-field
+     ':unknown-field)
+    (:data-too-deep
+     ':data-too-deep)
+    (:data-too-large
+     ':data-too-large)
+    ((:invalid-structure :invalid-value)
+     ':invalid-structure)
+    (otherwise
+     ':invalid-syntax)))
 
 (-> skill--read-one-form (string) t)
 (defun skill--read-one-form (source)
@@ -154,7 +159,7 @@ COMMON-LISP from the reader package keeps a bare symbol from naming anything."
    '(#\Space #\Tab #\Newline #\Return #\Page)
    (with-output-to-string (stream)
      (let ((pending-space-p nil)
-           (wrote-p nil))
+           (wrote-p         nil))
        (loop for character across description
              do (if (find character
                           '(#\Space #\Tab #\Newline #\Return #\Page))
@@ -250,7 +255,7 @@ COMMON-LISP from the reader package keeps a bare symbol from naming anything."
                  (skill--definition-fail
                   :invalid-structure
                   "SKILL.sexp contains a field without a value."))
-               (let ((key (first fields))
+               (let ((key   (first fields))
                      (value (second fields)))
                  (unless (member key
                                  '(:version
@@ -282,7 +287,7 @@ COMMON-LISP from the reader package keeps a bare symbol from naming anything."
              "SKILL.sexp requires field ~S."
              key))))
       (let ((version (gethash ':version values))
-            (name (skill--validate-name (gethash ':name values)))
+            (name    (skill--validate-name (gethash ':name values)))
             (description
               (skill--validate-description
                (gethash ':description values)))
@@ -322,7 +327,7 @@ COMMON-LISP from the reader package keeps a bare symbol from naming anything."
           (skill--parse-native-source
            source
            :instruction-character-limit instruction-character-limit
-           :allow-empty-instructions-p allow-empty-instructions-p)
+           :allow-empty-instructions-p  allow-empty-instructions-p)
         (values name
                 description
                 instructions
@@ -365,13 +370,13 @@ COMMON-LISP from the reader package keeps a bare symbol from naming anything."
                              (char= (char source (1- raw-end)) #\Return))
                         (1- raw-end)
                         raw-end))
-                  (next (if newline (1+ newline) length)))
+                  (next    (if newline (1+ newline) length)))
              (values content-end next))))
       (multiple-value-bind (opening-end yaml-start)
           (line-boundaries opening-start)
         (unless (string= source "---"
                          :start1 opening-start
-                         :end1 opening-end)
+                         :end1   opening-end)
           (skill--definition-fail
            :invalid-syntax
            "SKILL.md must begin with an exact --- delimiter line."))
@@ -382,7 +387,7 @@ COMMON-LISP from the reader package keeps a bare symbol from naming anything."
                      (line-boundaries line-start)
                    (when (string= source "---"
                                   :start1 line-start
-                                  :end1 line-end)
+                                  :end1   line-end)
                      (return-from skill--agent-frontmatter
                        (values (subseq source yaml-start line-start)
                                (subseq source line-next))))
@@ -590,6 +595,6 @@ reads. Invalid definitions signal SKILL-VALIDATION-ERROR."
               :invalid-structure "A skill source must be named SKILL.md or SKILL.sexp."))))
       (skill--definition-error (condition)
         (error 'skill-validation-error
-               :kind (skill--definition-error-kind condition)
+               :kind     (skill--definition-error-kind condition)
                :pathname pathname
-               :message (skill--definition-error-message condition))))))
+               :message  (skill--definition-error-message condition))))))

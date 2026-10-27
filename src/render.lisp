@@ -67,7 +67,7 @@ never retains a skill instruction string."
            (skill--catalog-compose
             nil
             (if skills (length skills) 0)
-            :prefix prefix
+            :prefix   prefix
             :guidance guidance)))
     (when (> (length minimum) character-budget)
       (error 'skill-catalog-render-error
@@ -81,7 +81,7 @@ never retains a skill instruction string."
     (if (null skills)
         (values minimum 0 0)
         (let ((selected nil)
-              (lines nil))
+              (lines    nil))
           (dolist (metadata skills)
             (let* ((candidate-lines
                      (append lines
@@ -91,7 +91,7 @@ never retains a skill instruction string."
                    (rendered
                      (skill--catalog-compose
                       candidate-lines omitted
-                      :prefix prefix
+                      :prefix   prefix
                       :guidance guidance)))
               (when (<= (length rendered) character-budget)
                 (setf selected
@@ -104,7 +104,7 @@ never retains a skill instruction string."
                   for current =
                     (skill--catalog-compose
                      lines omitted
-                     :prefix prefix
+                     :prefix   prefix
                      :guidance guidance)
                   for available = (- character-budget (length current))
                   for full-line =
@@ -141,7 +141,7 @@ never retains a skill instruction string."
                               (concatenate 'string prefix "..."))))))))
             (values (skill--catalog-compose
                      lines omitted
-                     :prefix prefix
+                     :prefix   prefix
                      :guidance guidance)
                     (length selected)
                     omitted))))))

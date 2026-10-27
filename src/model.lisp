@@ -79,97 +79,97 @@
 
 (defclass skill-metadata ()
   ((name
-    :initarg :name
-    :reader skill-metadata-name
-    :type non-empty-string
+    :initarg       :name
+    :reader        skill-metadata-name
+    :type          non-empty-string
     :documentation "The validated skill name from the source definition.")
    (description
-    :initarg :description
-    :reader skill-metadata-description
-    :type non-empty-string
+    :initarg       :description
+    :reader        skill-metadata-description
+    :type          non-empty-string
     :documentation "The bounded single-line description used for selection.")
    (pathname
-    :initarg :pathname
-    :reader skill-metadata-pathname
-    :type pathname
+    :initarg       :pathname
+    :reader        skill-metadata-pathname
+    :type          pathname
     :documentation "The exact absolute discovered skill source pathname.")
    (canonical-pathname
-    :initarg :canonical-pathname
-    :reader skill-metadata-canonical-pathname
-    :type pathname
+    :initarg       :canonical-pathname
+    :reader        skill-metadata-canonical-pathname
+    :type          pathname
     :documentation "The canonical regular file read during discovery.")
    (root
-    :initarg :root
-    :reader skill-metadata-root
-    :type pathname
+    :initarg       :root
+    :reader        skill-metadata-root
+    :type          pathname
     :documentation "The ordered discovery root that supplied this skill.")
-    (confinement-roots
-     :initarg :confinement-roots
-     :reader skill-metadata--confinement-roots
-     :type list
-     :documentation "The configured roots that confine discovery and fresh reads.")
+   (confinement-roots
+    :initarg       :confinement-roots
+    :reader        skill-metadata--confinement-roots
+    :type          list
+    :documentation "The configured roots that confine discovery and fresh reads.")
    (root-index
-    :initarg :root-index
-    :reader skill-metadata-root-index
-    :type (integer 0)
+    :initarg       :root-index
+    :reader        skill-metadata-root-index
+    :type          (integer 0)
     :documentation "The zero-based precedence position of the discovery root.")
    (source-format
-    :initarg :source-format
-    :reader skill-metadata-source-format
-    :type skill-source-format
+    :initarg       :source-format
+    :reader        skill-metadata-source-format
+    :type          skill-source-format
     :documentation "The native or standard source representation.")
    (cache-root
-    :initarg :cache-root
-    :initform nil
-    :reader skill-metadata-cache-root
-    :type (or null pathname)
+    :initarg       :cache-root
+    :initform      nil
+    :reader        skill-metadata-cache-root
+    :type          (or null pathname)
     :documentation "The replaceable conversion-cache root for standard Skills."))
   (:documentation
    "Validated skill catalog metadata without retained instruction text."))
 
 (defclass skill-diagnostic ()
   ((kind
-    :initarg :kind
-    :reader skill-diagnostic-kind
-    :type skill-diagnostic-kind
+    :initarg       :kind
+    :reader        skill-diagnostic-kind
+    :type          skill-diagnostic-kind
     :documentation "The machine-readable discovery or validation outcome.")
    (pathname
-    :initarg :pathname
-    :reader skill-diagnostic-pathname
-    :type pathname
+    :initarg       :pathname
+    :reader        skill-diagnostic-pathname
+    :type          pathname
     :documentation "The file or directory associated with the outcome.")
    (root-index
-    :initarg :root-index
-    :reader skill-diagnostic-root-index
-    :type (integer 0)
+    :initarg       :root-index
+    :reader        skill-diagnostic-root-index
+    :type          (integer 0)
     :documentation "The zero-based discovery-root position.")
    (message
-    :initarg :message
-    :reader skill-diagnostic-message
-    :type non-empty-string
+    :initarg       :message
+    :reader        skill-diagnostic-message
+    :type          non-empty-string
     :documentation "A concise human-readable explanation."))
   (:documentation
    "One typed skill discovery result that does not abort the remaining scan."))
 
 (defclass skill-catalog ()
   ((skills
-    :initarg :skills
-    :reader skill-catalog-skills
-    :type list
+    :initarg       :skills
+    :reader        skill-catalog-skills
+    :type          list
     :documentation "Selected metadata in deterministic precedence order.")
    (diagnostics
-    :initarg :diagnostics
-    :reader skill-catalog-diagnostics
-    :type list
+    :initarg       :diagnostics
+    :reader        skill-catalog-diagnostics
+    :type          list
     :documentation "Non-fatal scan, parse, validation, and shadowing outcomes."))
   (:documentation
    "An immutable skill metadata snapshot assembled from ordered roots."))
 
 (define-condition skill-error (error)
   ((message
-    :initarg :message
-    :reader skill-error-message
-    :type string
+    :initarg       :message
+    :reader        skill-error-message
+    :type          string
     :documentation "A human-readable explanation."))
   (:documentation "The base condition for cl-skills failures.")
   (:report (lambda (condition stream)
@@ -177,68 +177,68 @@
 
 (define-condition skill-read-error (skill-error)
   ((pathname
-    :initarg :pathname
-    :reader skill-read-error-pathname
-    :type pathname
+    :initarg       :pathname
+    :reader        skill-read-error-pathname
+    :type          pathname
     :documentation "The selected skill source that could not be read.")
    (cause
-    :initarg :cause
-    :initform nil
-    :reader skill-read-error-cause
-    :type t
+    :initarg       :cause
+    :initform      nil
+    :reader        skill-read-error-cause
+    :type          t
     :documentation "The underlying filesystem, syntax, or validation failure."))
   (:documentation "Reading selected skill instructions failed."))
 
 (define-condition skill-body-too-large (skill-read-error)
   ((character-limit
-    :initarg :character-limit
-    :reader skill-body-too-large-character-limit
-    :type (integer 1)
+    :initarg       :character-limit
+    :reader        skill-body-too-large-character-limit
+    :type          (integer 1)
     :documentation "The maximum selected instruction size in characters."))
   (:documentation "Selected skill instructions exceed the input bound."))
 
 (define-condition skill-catalog-render-error (skill-error)
   ((character-budget
-    :initarg :character-budget
-    :reader skill-catalog-render-error-character-budget
-    :type (integer 1)
+    :initarg       :character-budget
+    :reader        skill-catalog-render-error-character-budget
+    :type          (integer 1)
     :documentation "The requested maximum rendered character count.")
    (minimum-required
-    :initarg :minimum-required
-    :reader skill-catalog-render-error-minimum-required
-    :type (integer 1)
+    :initarg       :minimum-required
+    :reader        skill-catalog-render-error-minimum-required
+    :type          (integer 1)
     :documentation "The characters needed for the catalog protocol itself."))
   (:documentation "A catalog budget cannot hold its required guidance."))
 
 (define-condition skill-validation-error (skill-error)
   ((kind
-    :initarg :kind
-    :reader skill-validation-error-kind
-    :type skill-diagnostic-kind
+    :initarg       :kind
+    :reader        skill-validation-error-kind
+    :type          skill-diagnostic-kind
     :documentation "The structured source validation failure.")
    (pathname
-    :initarg :pathname
-    :reader skill-validation-error-pathname
-    :type pathname
+    :initarg       :pathname
+    :reader        skill-validation-error-pathname
+    :type          pathname
     :documentation "The intended source pathname, without filesystem access."))
   (:documentation "An in-memory skill source failed validation."))
 
 (define-condition skill--definition-error (error)
   ((kind
-    :initarg :kind
-    :reader skill--definition-error-kind
-    :type skill-diagnostic-kind
+    :initarg       :kind
+    :reader        skill--definition-error-kind
+    :type          skill-diagnostic-kind
     :documentation "The diagnostic kind produced for this file.")
    (message
-    :initarg :message
-    :reader skill--definition-error-message
-    :type non-empty-string
+    :initarg       :message
+    :reader        skill--definition-error-message
+    :type          non-empty-string
     :documentation "The validation failure explanation.")
    (source-character-count
-    :initarg :source-character-count
-    :initform 0
-    :reader skill--definition-error-source-character-count
-    :type (integer 0)
+    :initarg       :source-character-count
+    :initform      0
+    :reader        skill--definition-error-source-character-count
+    :type          (integer 0)
     :documentation "Characters read before this definition failed."))
   (:documentation "An internal non-fatal definition validation failure.")
   (:report (lambda (condition stream)

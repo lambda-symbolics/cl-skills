@@ -32,7 +32,7 @@
    (pathname :initarg :pathname :reader skill-executable-error-pathname :type pathname
              :documentation "Sidecar pathname associated with the failure.")
    (cause :initarg :cause :initform nil :reader skill-executable-error-cause
-          :type (or null condition)
+          :type          (or null condition)
           :documentation "Underlying condition, when available."))
   (:documentation "An executable skill discovery, authorization or invocation failure."))
 
@@ -40,7 +40,7 @@
   ((pathname :initarg :pathname :reader skill-executable-pathname :type pathname
              :documentation "Discovered absolute sidecar pathname.")
    (canonical-pathname :initarg :canonical-pathname :type pathname
-                       :reader skill-executable--canonical-pathname
+                       :reader        skill-executable--canonical-pathname
                        :documentation "Canonical file selected by discovery.")
    (identity :initarg :identity :reader skill-executable--identity
              :documentation "Filesystem identity selected by discovery.")
@@ -67,9 +67,12 @@
   "Return a fresh portable copy of EXECUTABLE's validated declaration."
   (labels ((copy (value)
              (typecase value
-               (cons (cons (copy (first value)) (copy (rest value))))
-               (string (copy-seq value))
-               (t value))))
+               (cons
+                (cons (copy (first value)) (copy (rest value))))
+               (string
+                (copy-seq value))
+               (t
+                value))))
     (copy (skill-executable--manifest executable))))
 
 (defun skill-executable--string-p (value)
@@ -175,10 +178,10 @@
 
 Read only EXECUTABLE.sexp beside the original SKILL.md or SKILL.sexp. Never
 load an ASDF definition, resolve an entrypoint, or grant declared authority."
-  (let* ((source (skill-metadata-pathname skill))
+  (let* ((source    (skill-metadata-pathname skill))
          (directory (uiop:pathname-directory-pathname source))
-         (pathname (merge-pathnames "EXECUTABLE.sexp" directory))
-         (roots (skill-metadata--confinement-roots skill)))
+         (pathname  (merge-pathnames "EXECUTABLE.sexp" directory))
+         (roots     (skill-metadata--confinement-roots skill)))
     (handler-case
         (unless (equal (ls-compat.posix:canonical-pathname source)
                        (skill-metadata-canonical-pathname skill))
@@ -196,17 +199,17 @@ load an ASDF definition, resolve an entrypoint, or grant declared authority."
     (multiple-value-bind (text canonical identity) (skill-executable--read pathname roots)
       (let* ((grammar (make-source-grammar
                        :label "EXECUTABLE.sexp" :keywords *skill-executable-keywords*
-                       :maximum-depth *skill-executable-depth-limit*
-                       :maximum-nodes *skill-executable-node-limit*
+                       :maximum-depth                   *skill-executable-depth-limit*
+                       :maximum-nodes                   *skill-executable-node-limit*
                        :common-lisp-symbols-permitted-p t
                        :allowed-atom-predicate
                        (lambda (value)
                          (or (null value) (eq value t) (stringp value)
                              (numberp value) (member value *skill-executable-keywords*)))))
-             (form (handler-case (read-source text grammar)
-                     (sexp-config-error (condition)
-                       (skill-executable--fail pathname (sexp-config-error-kind condition)
-                                               "Invalid executable sidecar data." condition)))))
+             (form    (handler-case (read-source text grammar)
+                        (sexp-config-error (condition)
+                          (skill-executable--fail pathname (sexp-config-error-kind condition)
+                                                  "Invalid executable sidecar data." condition)))))
         (make-instance 'skill-executable :pathname pathname :canonical-pathname canonical
                        :identity identity :digest (skill-source-digest text)
                        :manifest (skill-executable--validate form pathname) :skill skill)))))
@@ -214,7 +217,7 @@ load an ASDF definition, resolve an entrypoint, or grant declared authority."
 (defun skill-executable--fresh-p (executable)
   "Reject path, filesystem identity or content changes after discovery."
   (let* ((pathname (skill-executable-pathname executable))
-         (skill (skill-executable--skill executable)))
+         (skill    (skill-executable--skill executable)))
     (handler-case
         (unless (equal (ls-compat.posix:canonical-pathname (skill-metadata-pathname skill))
                        (skill-metadata-canonical-pathname skill))

@@ -11,8 +11,8 @@
 (-> skill--agent-native-source (string string string) string)
 (defun skill--agent-native-source (name description instructions)
   "Return one generated native skill form preserving INSTRUCTIONS exactly."
-  (let ((*print-pretty* nil)
-        (*print-circle* nil)
+  (let ((*print-pretty*   nil)
+        (*print-circle*   nil)
         (*print-readably* t))
     (format nil
             "(:autolith-skill~% :version 1~% :name ~S~% :description ~S~% :instructions ~S)~%"
@@ -56,10 +56,10 @@
     (unwind-protect
          (progn
            (with-open-file (stream temporary
-                                   :direction ':output
-                                   :if-exists ':error
+                                   :direction         ':output
+                                   :if-exists         ':error
                                    :if-does-not-exist ':create
-                                   :external-format ':utf-8)
+                                   :external-format   ':utf-8)
              (write-string content stream)
              (finish-output stream))
            (setf (ls-compat.posix:file-mode temporary) #o600)
@@ -111,7 +111,7 @@
               (skill--parse-native-source
                cache-source
                :instruction-character-limit instruction-character-limit
-               :allow-empty-instructions-p t)
+               :allow-empty-instructions-p  t)
             (values name description instructions t))))
     (skill--definition-error ()
       (values nil nil nil nil))))

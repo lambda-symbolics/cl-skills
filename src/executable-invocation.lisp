@@ -39,7 +39,7 @@ an unbounded list. This is a resource bound, not a second contract validator."
 
 (defun skill-executable--contract-value (executable value key)
   "Return fresh normalized tagged VALUE satisfying the declared KEY contract."
-  (let ((kind (if (eq key ':input) ':invalid-input ':invalid-output))
+  (let ((kind     (if (eq key ':input) ':invalid-input ':invalid-output))
         (pathname (skill-executable-pathname executable)))
     (skill-executable--bounded-value executable value kind)
     (handler-case
@@ -55,7 +55,7 @@ an unbounded list. This is a resource bound, not a second contract validator."
 (defun skill-executable--resolve (executable declaration)
   "Resolve an existing function without reading or interning the declaration."
   (let* ((package (find-package (first declaration)))
-         (symbol (and package (find-symbol (second declaration) package))))
+         (symbol  (and package (find-symbol (second declaration) package))))
     (unless (and symbol (fboundp symbol) (not (macro-function symbol))
                  (not (special-operator-p symbol)))
       (skill-executable--fail (skill-executable-pathname executable) ':missing-entrypoint
@@ -66,7 +66,7 @@ an unbounded list. This is a resource bound, not a second contract validator."
   "Check an authorized ASDF system definition before loading its code."
   (let ((pathname (skill-executable-pathname executable)))
     (handler-case
-        (let* ((system (asdf:find-system name nil))
+        (let* ((system  (asdf:find-system name nil))
                (version (and system (asdf:component-version system))))
           (unless system
             (skill-executable--fail pathname ':missing-system "A declared ASDF system is unavailable."))
@@ -81,9 +81,9 @@ an unbounded list. This is a resource bound, not a second contract validator."
 
 (defun skill-executable--prepare (executable &key authorize loader context operation cancelled-p)
   "Authorize, revalidate identity, check versions, and explicitly load declared systems."
-  (let* ((manifest (skill-executable--manifest executable))
-         (pathname (skill-executable-pathname executable))
-         (system (getf manifest :system))
+  (let* ((manifest     (skill-executable--manifest executable))
+         (pathname     (skill-executable-pathname executable))
+         (system       (getf manifest :system))
          (dependencies (getf manifest :dependencies)))
     (skill-executable--cancel executable cancelled-p)
     (skill-executable--fresh-p executable)
@@ -128,7 +128,7 @@ must return T for (EXECUTABLE :OPERATION :INVOKE :CONTEXT CONTEXT), including al
 declared capabilities and tools. LOADER, required for declared systems, receives
 (SYSTEM-NAME :CONTEXT CONTEXT). No authority is inferred from metadata. The caller
 owns process supervision, timeouts and actual capability enforcement."
-  (let* ((pathname (skill-executable-pathname executable))
+  (let* ((pathname    (skill-executable-pathname executable))
          (declaration (getf (skill-executable--manifest executable) :entrypoint)))
     (unless declaration
       (skill-executable--fail pathname ':missing-entrypoint "The skill declares no invocation entrypoint."))
@@ -137,10 +137,10 @@ owns process supervision, timeouts and actual capability enforcement."
       (skill-executable--prepare executable :authorize authorize :loader loader
                                 :context context :operation ':invoke :cancelled-p cancelled-p)
       (let* ((function (skill-executable--resolve executable declaration))
-             (output (handler-case (funcall function input :context context)
-                       (error (condition)
-                         (skill-executable--fail pathname ':invocation-error
-                                                 "The executable entrypoint failed." condition)))))
+             (output   (handler-case (funcall function input :context context)
+                         (error (condition)
+                           (skill-executable--fail pathname ':invocation-error
+                                                   "The executable entrypoint failed." condition)))))
         (skill-executable--cancel executable cancelled-p)
         (skill-executable--fresh-p executable)
         (skill-executable--contract-value executable output ':output)))))
@@ -154,7 +154,7 @@ owns process supervision, timeouts and actual capability enforcement."
 Return T only when its primary result is exactly T. A missing declaration,
 non-T result, error, cancellation or changed declaration is a typed failure.
 Verification is caller-requested execution, not a discovery-time efficacy claim."
-  (let* ((pathname (skill-executable-pathname executable))
+  (let* ((pathname    (skill-executable-pathname executable))
          (declaration (and (member entrypoint '(:self-test :verify))
                            (getf (skill-executable--manifest executable) entrypoint))))
     (unless declaration
