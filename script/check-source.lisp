@@ -66,6 +66,18 @@ from this process's restricted one."
                                           :error-output        ':interactive
                                           :ignore-error-status t)))))
 
+(defun check--tools-complete-p (tools)
+  "Return T when every Git tool the qlfile of TOOLS names has an installed release.
+
+qlot can report success after a network failure left a dist out."
+  (every (lambda (line)
+           (let ((words (uiop:split-string line :separator " ")))
+             (or (not (equal (first words) "git"))
+                 (and (uiop:subdirectories
+                       (merge-pathnames (format nil ".qlot/dists/~A/software/" (second words)) tools))
+                      t))))
+         (uiop:read-file-lines (merge-pathnames "qlfile" tools))))
+
 (defun check--touch (file)
   "Create or rewrite FILE, so its write date records the current time."
   (with-open-file (stream file :direction ':output :if-exists ':supersede)
@@ -81,7 +93,9 @@ from this process's restricted one."
       (finish-output)
       (dolist (file (check--tool-files root))
         (uiop:copy-file file (ensure-directories-exist (merge-pathnames (file-namestring file) tools))))
-      (unless (check--run-qlot tools)
+      (unless (and (check--run-qlot tools) (check--tools-complete-p tools))
+        (format t "~&Installing the development tools failed; the next check starts over.~%")
+        (uiop:delete-directory-tree tools :validate t)
         (uiop:quit 2))
       (check--touch installed))
     (when (or (not (probe-file refreshed))
