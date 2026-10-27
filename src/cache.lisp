@@ -185,11 +185,3 @@
                         instructions
                         canonical-pathname
                         source-character-count))))))))
-
-(-> skill--parse-source-definition
-    (pathname
-     &key (:instruction-character-limit (integer 1))
-          (:file-character-limit (integer 1))
-          (:roots list)
-          (:cache-root (option pathname)))
-    (values string string string pathname (integer 0)))
