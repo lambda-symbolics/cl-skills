@@ -19,6 +19,7 @@
                 #:skill-catalog-render-error-minimum-required
                 #:skill-catalog-skills
                 #:skill-diagnostic-kind
+                #:skill-metadata
                 #:skill-metadata-cache-root
                 #:skill-metadata-canonical-pathname
                 #:skill-metadata-description
@@ -41,4 +42,5 @@
                 #:skill-validation-error-kind
                 #:skill-validation-error-pathname)
   (:import-from #:serapeum
+                #:->
                 #:partial))

@@ -3,6 +3,7 @@
 (defvar *test-count* 0
   "The number of assertions executed by the current test run.")
 
+(-> test-assert (t string) boolean)
 (defun test-assert (condition description)
   "Count and require CONDITION, reporting DESCRIPTION on failure."
   (incf *test-count*)
@@ -10,6 +11,7 @@
     (error "Test failed: ~A" description))
   t)
 
+(-> tests--temporary-directory () pathname)
 (defun tests--temporary-directory ()
   "Create and return one unique temporary directory."
   (let ((directory
@@ -31,6 +33,7 @@
                                      :validate          t
                                      :if-does-not-exist ':ignore)))))
 
+(-> tests--write (pathname string string) pathname)
 (defun tests--write (root relative content)
   "Write CONTENT beneath ROOT at RELATIVE and return its pathname."
   (let ((pathname (merge-pathnames relative root)))
@@ -43,6 +46,7 @@
       (write-string content stream))
     pathname))
 
+(-> tests--write-native-entry (pathname string string) pathname)
 (defun tests--write-native-entry (directory name content)
   "Write CONTENT to literal native NAME beneath DIRECTORY."
   (let ((pathname
@@ -58,31 +62,37 @@
       (write-string content stream))
     pathname))
 
+(-> tests--native (string string string &key (:version integer)) string)
 (defun tests--native (name description instructions &key (version 1))
   "Return one native skill definition."
   (format nil
           "(:autolith-skill~% :version ~S~% :name ~S~% :description ~S~% :instructions ~S)~%"
           version name description instructions))
 
+(-> tests--standard (string string string) string)
 (defun tests--standard (name description instructions)
   "Return one standard Agent Skill definition."
   (format nil
           "---~%name: ~S~%description: ~S~%---~%~A"
           name description instructions))
 
+(-> tests--names (skill-catalog) list)
 (defun tests--names (catalog)
   "Return selected skill names from CATALOG."
   (mapcar #'skill-metadata-name (skill-catalog-skills catalog)))
 
+(-> tests--kinds (skill-catalog) list)
 (defun tests--kinds (catalog)
   "Return diagnostic kinds from CATALOG."
   (mapcar #'skill-diagnostic-kind (skill-catalog-diagnostics catalog)))
 
+(-> tests--manifest-pathname (pathname) pathname)
 (defun tests--manifest-pathname (cache-pathname)
   "Return CACHE-PATHNAME's manifest pathname."
   (merge-pathnames "manifest.sha256"
                    (uiop:pathname-directory-pathname cache-pathname)))
 
+(-> test-path-classification () t)
 (defun test-path-classification ()
   "Test exact case-sensitive source classification."
   (test-assert
@@ -101,6 +111,7 @@
   (test-assert (not (skill-source-pathname-p #P"skill.md"))
                "supported pathname predicate rejects wrong case"))
 
+(-> test-discovery-and-precedence () t)
 (defun test-discovery-and-precedence ()
   "Test deterministic traversal, parsing, precedence, and fresh reads."
   (with-test-root (root)
@@ -155,6 +166,7 @@
         (test-assert (string= (skill-metadata-read alpha) "Fresh body")
                      "metadata reads the current source rather than retained body")))))
 
+(-> test-native-validation () t)
 (defun test-native-validation ()
   "Test native syntax, shape, bounds, and reader safety."
   (with-test-root (root)
@@ -209,6 +221,7 @@
                (tests--kinds (skill-catalog-discover (list root))))
        "native source character count is bounded"))))
 
+(-> test-filesystem-boundaries () t)
 (defun test-filesystem-boundaries ()
   "Test root confinement and non-regular source handling."
   (with-test-root (root)
@@ -235,6 +248,7 @@
                (tests--kinds (skill-catalog-discover (list root))))
        "unresolved source links produce scan diagnostics"))))
 
+(-> test-canonical-discovery-roots () t)
 (defun test-canonical-discovery-roots ()
   "Test root aliases, component boundaries, and missing discovery roots."
   (with-test-root (parent)
@@ -269,6 +283,7 @@
           (test-assert (member ':missing-root kinds)
                        "a missing root is diagnosed without blocking a valid root"))))))
 
+(-> test-literal-filesystem-entry-names () t)
 (defun test-literal-filesystem-entry-names ()
   "Test that host-valid names cannot abort discovery pathname construction."
   (with-test-root (root)
@@ -284,6 +299,7 @@
       (test-assert (not (member ':scan-error (tests--kinds catalog)))
                    "literal host filenames do not produce pathname parse diagnostics"))))
 
+(-> test-symlinked-skill-directories () t)
 (defun test-symlinked-skill-directories ()
   "Test symlinked directories across configured roots and fresh-read confinement."
   (with-test-root (primary)
@@ -324,6 +340,7 @@
                       (skill-catalog-discover (list primary secondary))))
              "discovery does not follow a directory outside configured roots")))))))
 
+(-> test-scan-limits () t)
 (defun test-scan-limits ()
   "Test bounded traversal and aggregate character budgets."
   (with-test-root (root)
@@ -353,6 +370,7 @@
               (skill-catalog-discover (list root) :max-characters 20)))
      "aggregate source characters are bounded")))
 
+(-> test-standard-validation () t)
 (defun test-standard-validation ()
   "Test strict YAML frontmatter, names, fields, and exact bodies."
   (with-test-root (root)
@@ -422,6 +440,7 @@
         (test-assert bounded-p
                      "selected standard instruction length is bounded")))))
 
+(-> test-conversion-cache () t)
 (defun test-conversion-cache ()
   "Test content addressing, manifests, integrity checks, and regeneration."
   (with-test-root (root)
@@ -495,6 +514,7 @@
                                   "Changed body")
                          "changed source reads through its new cache")))))))
 
+(-> test-catalog-rendering () t)
 (defun test-catalog-rendering ()
   "Test provider-neutral bounded catalog rendering."
   (with-test-root (root)
@@ -577,6 +597,7 @@
       (test-assert (and (zerop included) (zerop omitted))
                    "empty catalog reports zero counts"))))
 
+(-> test-read-failures () t)
 (defun test-read-failures ()
   "Test typed selected-source read failures."
   (with-test-root (root)
@@ -612,6 +633,7 @@
           (test-assert (= (skill-body-too-large-character-limit condition) 4)
                        "body-too-large records active instruction limit"))))))
 
+(-> test-source-validation () t)
 (defun test-source-validation ()
   "Test in-memory validation, typed failures, and its independent bounds."
   (dolist (name (list "a" "release-notes" "skill-12" (make-string 64 :initial-element #\a)))
@@ -668,6 +690,7 @@
                (eq (skill-validation-error-kind condition) ':file-too-large)))
            "source and instruction bounds are enforced independently"))))))
 
+(-> test-exact-source-discovery () t)
 (defun test-exact-source-discovery ()
   "Exercise exact-source discovery, fresh reads, and normal confinement errors."
   (with-test-root (root)
@@ -700,6 +723,7 @@
           (test-assert (and (null metadata) (eq ':invalid-source (skill-diagnostic-kind diagnostic)))
                        "unsupported exact source returns a diagnostic"))))))
 
+(-> run-tests () null)
 (defun run-tests ()
   "Run the complete cl-skills test suite."
   (setf *test-count* 0)

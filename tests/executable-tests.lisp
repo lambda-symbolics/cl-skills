@@ -19,36 +19,43 @@
 (defvar *executable-call-count* 0
   "Calls executed by the invocation fixture.")
 
+(-> executable-echo (t &key (:context t)) t)
 (defun executable-echo (input &key context)
   "Echo valid input and require the originating opaque context."
   (incf *executable-call-count*)
   (unless (eq context ':fixture) (error "Context lost."))
   input)
 
+(-> executable-bad-output (t &key (:context t)) integer)
 (defun executable-bad-output (input &key context)
   "Return an invalid output for contract failure tests."
   (declare (ignore input context))
   42)
 
+(-> executable-error (t &key (:context t)) nil)
 (defun executable-error (input &key context)
   "Signal an entrypoint failure."
   (declare (ignore input context))
   (error "Fixture entrypoint failure."))
 
+(-> executable-self-test (&key (:context t)) boolean)
 (defun executable-self-test (&key context)
   "Run a real callable self-test of the fixture entrypoint."
   (string= (executable-echo "self-test" :context context) "self-test"))
 
+(-> executable-verification-fails (&key (:context t)) null)
 (defun executable-verification-fails (&key context)
   "Return a failed verification result."
   (declare (ignore context))
   nil)
 
+(-> executable-verification-errors (&key (:context t)) nil)
 (defun executable-verification-errors (&key context)
   "Signal an error in verification."
   (declare (ignore context))
   (error "Fixture verification error."))
 
+(-> tests--executable-form (&rest t) string)
 (defun tests--executable-form (&rest fields)
   "Return a callable declaration, replacing defaults with FIELDS."
   (let ((manifest '(:format-version 1 :skill-version "1.0.0"
@@ -61,12 +68,18 @@
     (loop for (key value) on fields by (partial #'nthcdr 2) do (setf (getf manifest key) value))
     (prin1-to-string (cons ':skill-executable manifest))))
 
+(-> tests--executable-skill
+    (pathname &optional (or null string))
+    (or null skill-metadata))
 (defun tests--executable-skill (root &optional (source (tests--executable-form)))
   "Write a standard Skill and optional sidecar; return selected metadata."
   (tests--write root "echo/SKILL.md" (tests--standard "echo" "Echo input." "Echo."))
   (when source (tests--write root "echo/EXECUTABLE.sexp" source))
   (skill-catalog-find (skill-catalog-discover (list root)) "echo"))
 
+(-> tests--executable-authorize
+    (skill-executable &key (:operation keyword) (:context t))
+    boolean)
 (defun tests--executable-authorize (executable &key operation context)
   "Authorize only the fixture's explicit capability and tool declarations."
   (let ((manifest (skill-executable-manifest executable)))
@@ -76,6 +89,7 @@
          (equal (getf manifest :tools) '("resource.read"))
          t)))
 
+(-> tests--executable-failure (keyword function) boolean)
 (defun tests--executable-failure (kind function)
   "Require FUNCTION to signal an executable failure with KIND."
   (handler-case
@@ -85,6 +99,7 @@
                    (format nil "Expected ~S, got ~S: ~A" kind (skill-executable-error-kind condition) condition))
       (test-assert (pathnamep (skill-executable-error-pathname condition)) "Failure retains sidecar pathname."))))
 
+(-> test-executable-discovery () t)
 (defun test-executable-discovery ()
   "Exercise optional data-only discovery and fresh metadata copies."
   (with-test-root (root)
@@ -105,6 +120,7 @@
                     "(:skill-executable :format-version 1 :skill-version \"1\" :system \"only-system\")")
       (test-assert (skill-executable-discover skill) "System-only manifests are valid metadata."))))
 
+(-> test-executable-rejections () t)
 (defun test-executable-rejections ()
   "Exercise safe readers, exact fields, versions, contracts and resource bounds."
   (with-test-root (root)
@@ -134,6 +150,7 @@
       (let ((*skill-executable-depth-limit* 1))
         (tests--executable-failure ':data-too-deep (lambda () (skill-executable-discover skill)))))))
 
+(-> test-executable-invocation () t)
 (defun test-executable-invocation ()
   "Exercise authority, actual calls, output contracts and callable self-tests."
   (with-test-root (root)
@@ -186,6 +203,7 @@
                                   (lambda () (skill-executable-verify executable
                                               :authorize #'tests--executable-authorize :context ':fixture)))))))
 
+(-> test-executable-identity () t)
 (defun test-executable-identity ()
   "Reject changed content, replacements and changes made by authorization."
   (with-test-root (root)
@@ -210,6 +228,7 @@
                                                          (tests--write root "echo/EXECUTABLE.sexp" (tests--executable-form))
                                                          t)))))))
 
+(-> test-executable-systems () t)
 (defun test-executable-systems ()
   "Load a real ASDF fixture and verify version checks precede code loading."
   (with-test-root (root)
@@ -263,6 +282,7 @@
             (let ((symbol (find-symbol name '#:cl-skills/tests)))
               (when (and symbol (fboundp symbol)) (fmakunbound symbol)))))))))
 
+(-> test-executable-boundaries () t)
 (defun test-executable-boundaries ()
   "Exercise contract transport, strict authority, cancellation and loader failures."
   (with-test-root (root)
@@ -311,6 +331,7 @@
         (lambda () (skill-executable-invoke (skill-executable-discover skill) "ok"
                     :authorize #'tests--executable-authorize :context ':fixture))))))
 
+(-> test-executable-confinement () t)
 (defun test-executable-confinement ()
   "Reject outside-root links and nonregular optional sidecars without blocking."
   (with-test-root (root)
@@ -327,6 +348,7 @@
         (ensure-directories-exist (uiop:ensure-directory-pathname sidecar))
         (tests--executable-failure ':not-regular-file (lambda () (skill-executable-discover skill)))))))
 
+(-> run-executable-tests () boolean)
 (defun run-executable-tests ()
   "Run optional executable Skill behavior and actual callable tests."
   (let ((*test-count* 0))
