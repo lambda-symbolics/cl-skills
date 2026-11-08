@@ -22,6 +22,10 @@ With the system available to ASDF:
 The library depends on Ironclad, NYAML, ls-compat/posix, sexp-config,
 Serapeum, and UIOP.
 
+The canonical package declares the optional executable Skill API's exported
+symbols as well. Load =cl-skills/executable= before calling that API; loading it
+does not change the package's exports, so reloading the base system is safe.
+
 * Discovering and reading Skills
 
 Roots are ordered. An earlier root wins when several definitions use the same

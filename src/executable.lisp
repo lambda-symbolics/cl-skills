@@ -2,13 +2,6 @@
 
 ;;;; -- Executable Skill Metadata --
 
-(export '(*skill-executable-character-limit* *skill-executable-node-limit*
-          *skill-executable-depth-limit* skill-executable skill-executable-discover
-          skill-executable-pathname skill-executable-digest skill-executable-manifest
-          skill-executable-error skill-executable-error-kind
-          skill-executable-error-pathname skill-executable-error-cause
-          skill-executable-invoke skill-executable-verify))
-
 (defparameter *skill-executable-character-limit* 32768
   "Maximum characters read from one EXECUTABLE.sexp sidecar.")
 
