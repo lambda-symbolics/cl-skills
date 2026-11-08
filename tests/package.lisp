@@ -3,6 +3,9 @@
   (:use #:cl)
   (:import-from #:cl-skills
                 #:*skill-description-character-limit*
+                #:*skill-executable-character-limit*
+                #:*skill-executable-depth-limit*
+                #:*skill-executable-node-limit*
                 #:*skill-file-character-limit*
                 #:*skill-form-depth-limit*
                 #:*skill-form-node-limit*
@@ -19,6 +22,15 @@
                 #:skill-catalog-render-error-minimum-required
                 #:skill-catalog-skills
                 #:skill-diagnostic-kind
+                #:skill-executable
+                #:skill-executable-digest
+                #:skill-executable-discover
+                #:skill-executable-error
+                #:skill-executable-error-kind
+                #:skill-executable-error-pathname
+                #:skill-executable-invoke
+                #:skill-executable-manifest
+                #:skill-executable-verify
                 #:skill-metadata
                 #:skill-metadata-cache-root
                 #:skill-metadata-canonical-pathname
