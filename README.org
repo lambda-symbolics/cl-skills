@@ -55,6 +55,12 @@ It returns the rendered text, included count, and omitted count. Optional
 =:PREFIX= and =:GUIDANCE= strings replace the default host protocol sections
 and count toward the character budget.
 
+A description longer than =:DESCRIPTION-CHARACTER-LIMIT= (200 by default) is
+cut and ends in three dots. When the budget is too small for that, the limit
+drops for all descriptions alike until the catalog fits, so the last skill
+keeps as much of its description as the first. A host should tell the model
+where to read a whole description; =SKILL-METADATA-DESCRIPTION= returns it.
+
 * Validating source text
 
 Use =SKILL-NAME-VALID-P= to check the portable Agent Skills name grammar.

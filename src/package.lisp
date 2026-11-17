@@ -17,6 +17,7 @@
   (:export
    #:*skill-agent-cache-character-limit*
    #:*skill-catalog-character-budget*
+   #:*skill-catalog-description-character-limit*
    #:*skill-description-character-limit*
    #:*skill-discovery-character-limit*
    #:*skill-file-character-limit*

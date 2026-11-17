@@ -4,7 +4,7 @@
 (defun skill--catalog-prefix ()
   "Return the fixed model-visible skill catalog introduction."
   (format nil
-          "## Skills~2%A skill is a reusable instruction set stored in native SKILL.sexp or standard SKILL.md. The entries below contain names and descriptions only. Descriptions may be shortened to keep this catalog bounded.~2%### Available skills~%"))
+          "## Skills~2%A skill is a reusable instruction set stored in native SKILL.sexp or standard SKILL.md. The entries below contain names and descriptions only. A description that ends in ... is shortened to keep this catalog bounded.~2%### Available skills~%"))
 
 (-> skill--catalog-guidance () string)
 (defun skill--catalog-guidance ()
@@ -20,6 +20,24 @@
 The line leaves the source path out: a host selects a skill by name, and the
 budget goes to the descriptions a selection is made from."
   (format nil "- ~A~@[: ~A~]" (skill-metadata-name metadata) description))
+
+(-> skill--catalog-description (skill-metadata (integer 0)) (option string))
+(defun skill--catalog-description (metadata character-limit)
+  "Return METADATA's description in at most CHARACTER-LIMIT characters.
+
+A longer description is cut and ends in three dots. Return NIL when the limit
+has no room for any of its text."
+  (let ((description (skill-metadata-description metadata)))
+    (cond
+      ((<= (length description) character-limit)
+       description)
+      ((> character-limit 3)
+       (concatenate 'string
+                    (string-right-trim
+                     " " (subseq description 0 (- character-limit 3)))
+                    "..."))
+      (t
+       nil))))
 
 (-> skill--catalog-omission-line ((integer 1)) string)
 (defun skill--catalog-omission-line (count)
@@ -48,6 +66,7 @@ budget goes to the descriptions a selection is made from."
 
 (-> skill-catalog-render
     (skill-catalog &key (:character-budget (integer 1))
+                        (:description-character-limit (integer 0))
                         (:prefix string)
                         (:guidance string))
     (values string (integer 0) (integer 0)))
@@ -55,13 +74,17 @@ budget goes to the descriptions a selection is made from."
     (catalog
      &key
        (character-budget *skill-catalog-character-budget*)
+       (description-character-limit *skill-catalog-description-character-limit*)
        (prefix (skill--catalog-prefix))
        (guidance (skill--catalog-guidance)))
   "Render bounded CATALOG metadata.
 
 Return the rendered text, included metadata count, and omitted metadata count.
-PREFIX and GUIDANCE delimit the host-specific catalog protocol. The function
-never retains a skill instruction string."
+PREFIX and GUIDANCE delimit the host-specific catalog protocol. Names come
+first: a skill is listed while its name fits CHARACTER-BUDGET. The listed
+descriptions then share what is left: each is cut to the longest common length
+that fits, at most DESCRIPTION-CHARACTER-LIMIT characters. The function never
+retains a skill instruction string."
   (let* ((skills (skill-catalog-skills catalog))
          (minimum
            (skill--catalog-compose
@@ -98,50 +121,21 @@ never retains a skill instruction string."
                       (append selected (list metadata))
                       lines candidate-lines))))
           (let ((omitted (- (length skills) (length selected))))
-            (loop for metadata in selected
-                  for position from 0
-                  for description = (skill-metadata-description metadata)
-                  for current =
-                    (skill--catalog-compose
-                     lines omitted
-                     :prefix   prefix
-                     :guidance guidance)
-                  for available = (- character-budget (length current))
-                  for full-line =
-                    (skill--catalog-line
-                     metadata
-                     :description description)
-                  for base-line = (nth position lines)
-                  for full-cost = (- (length full-line)
-                                     (length base-line))
-                  do
-                     (cond
-                       ((<= full-cost available)
-                        (setf (nth position lines) full-line))
-                       ((>= available 6)
-                        (let* ((prefix-length
-                                 (min (length description)
-                                      (- available 5)))
-                               (prefix
-                                 (string-right-trim
-                                  '(#\Space
-                                    #\Tab
-                                    #\Newline
-                                    #\Return
-                                    #\Page)
-                                  (subseq description
-                                          0
-                                          prefix-length))))
-                          (when (plusp (length prefix))
-                            (setf
-                             (nth position lines)
-                             (skill--catalog-line
-                              metadata
-                              :description
-                              (concatenate 'string prefix "..."))))))))
-            (values (skill--catalog-compose
-                     lines omitted
-                     :prefix   prefix
-                     :guidance guidance)
-                    (length selected)
-                    omitted))))))
+            (flet ((render (character-limit)
+                     (skill--catalog-compose
+                      (mapcar (lambda (metadata)
+                                (skill--catalog-line
+                                 metadata
+                                 :description (skill--catalog-description
+                                               metadata character-limit)))
+                              selected)
+                      omitted
+                      :prefix   prefix
+                      :guidance guidance)))
+              (values (loop for character-limit
+                              downfrom description-character-limit to 0
+                            for rendered = (render character-limit)
+                            when (<= (length rendered) character-budget)
+                              return rendered)
+                      (length selected)
+                      omitted)))))))

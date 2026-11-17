@@ -600,6 +600,30 @@
       (test-assert (and (zerop included) (zerop omitted))
                    "empty catalog reports zero counts"))))
 
+(-> test-catalog-description-shortening () t)
+(defun test-catalog-description-shortening ()
+  "Test the description limit and the even split of a tight budget."
+  (with-test-root (root)
+    (dolist (name '("first" "second"))
+      (tests--write root (format nil "~A/SKILL.sexp" name)
+                    (tests--native name (make-string 300 :initial-element #\d) "Body")))
+    (let ((catalog (skill-catalog-discover (list root))))
+      (flet ((line (name character-count)
+               (format nil "- ~A: ~A...~%"
+                       name (make-string character-count :initial-element #\d))))
+        (let ((rendered (skill-catalog-render catalog)))
+          (test-assert (and (search (line "first" 197) rendered)
+                            (search (line "second" 197) rendered))
+                       "a long description is cut to the default limit"))
+        (let ((rendered (skill-catalog-render catalog :description-character-limit 20)))
+          (test-assert (and (search (line "first" 17) rendered)
+                            (search (line "second" 17) rendered))
+                       "a host sets the description limit"))
+        (let ((even (skill-catalog-render catalog :description-character-limit 50)))
+          (test-assert
+           (string= even (skill-catalog-render catalog :character-budget (1+ (length even))))
+           "a tight budget cuts every description to the same length"))))))
+
 (-> test-read-failures () t)
 (defun test-read-failures ()
   "Test typed selected-source read failures."
@@ -743,6 +767,7 @@
   (test-standard-validation)
   (test-conversion-cache)
   (test-catalog-rendering)
+  (test-catalog-description-shortening)
   (test-read-failures)
   (format t "~D cl-skills tests passed.~%" *test-count*)
   nil)

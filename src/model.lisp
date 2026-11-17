@@ -36,6 +36,9 @@
 (defparameter *skill-catalog-character-budget* 3500
   "The default maximum characters rendered into a provider-visible catalog.")
 
+(defparameter *skill-catalog-description-character-limit* 200
+  "The default maximum characters of one description in a rendered catalog.")
+
 (defparameter *skill-native-keywords*
   '(:autolith-skill :version :name :description :instructions)
   "The complete keyword vocabulary accepted by native skill forms.")
