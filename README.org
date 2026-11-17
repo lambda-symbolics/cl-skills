@@ -50,7 +50,7 @@ source without scanning surrounding directories. It returns fresh metadata and
 =:CACHE-ROOT= when needed. The same bounded parser and root confinement apply.
 
 =SKILL-CATALOG-RENDER= produces a provider-neutral, character-bounded catalog
-containing names, descriptions, and source paths, but no instruction bodies.
+containing names and descriptions, but no source paths or instruction bodies.
 It returns the rendered text, included count, and omitted count. Optional
 =:PREFIX= and =:GUIDANCE= strings replace the default host protocol sections
 and count toward the character budget.

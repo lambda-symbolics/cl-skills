@@ -4,7 +4,7 @@
 (defun skill--catalog-prefix ()
   "Return the fixed model-visible skill catalog introduction."
   (format nil
-          "## Skills~2%A skill is a reusable instruction set stored in native SKILL.sexp or standard SKILL.md. The entries below contain metadata and exact source locations only. Descriptions may be shortened to keep this catalog bounded.~2%### Available skills~%"))
+          "## Skills~2%A skill is a reusable instruction set stored in native SKILL.sexp or standard SKILL.md. The entries below contain names and descriptions only. Descriptions may be shortened to keep this catalog bounded.~2%### Available skills~%"))
 
 (-> skill--catalog-guidance () string)
 (defun skill--catalog-guidance ()
@@ -15,12 +15,11 @@
 (-> skill--catalog-line (skill-metadata &key (:description (option string)))
     string)
 (defun skill--catalog-line (metadata &key description)
-  "Render one METADATA line with an optional DESCRIPTION."
-  (format nil
-          "- ~A~@[: ~A~] (file: ~A)"
-          (skill-metadata-name metadata)
-          description
-          (namestring (skill-metadata-pathname metadata))))
+  "Render one METADATA line with an optional DESCRIPTION.
+
+The line leaves the source path out: a host selects a skill by name, and the
+budget goes to the descriptions a selection is made from."
+  (format nil "- ~A~@[: ~A~]" (skill-metadata-name metadata) description))
 
 (-> skill--catalog-omission-line ((integer 1)) string)
 (defun skill--catalog-omission-line (count)
