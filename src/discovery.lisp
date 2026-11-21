@@ -59,6 +59,23 @@
    *default-pathname-defaults*
    :as-directory directory-p))
 
+(-> skill-directory-source-pathname (pathname) (values (option pathname) pathname))
+(defun skill-directory-source-pathname (directory)
+  "Return the highest-ranked source entry in this exact DIRECTORY, and the Markdown pathname.
+A final link or other unusable entry counts as present; the caller decides
+whether it may be read or edited. A missing source returns NIL first."
+  (let* ((directory (uiop:ensure-directory-pathname directory))
+         (markdown  (skill--directory-entry-pathname directory "SKILL.md"))
+         (native    (skill--directory-entry-pathname directory "SKILL.sexp")))
+    (values (find-if (lambda (path)
+                       (handler-case
+                           (ls-compat.posix:file-information path :follow-links-p nil)
+                         (ls-compat.posix:file-operation-failed (condition)
+                           (unless (eq (ls-compat.posix:file-operation-failed-reason condition) ':missing)
+                             (error condition)))))
+                     (sort (list markdown native) #'skill--definition-pathname<))
+            markdown)))
+
 (-> skill--canonical-roots (list) list)
 (defun skill--canonical-roots (roots)
   "Return the canonical existing directory pathnames among ROOTS."

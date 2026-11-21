@@ -7,6 +7,8 @@
           skill-executable-pathname skill-executable-digest skill-executable-manifest
           skill-executable-error skill-executable-error-kind
           skill-executable-error-pathname skill-executable-error-cause
+          skill-executable-identity-snapshot skill-executable-identity-matches-p
+          skill-executable-rediscover skill-executable-error-diagnostic
           skill-executable-invoke skill-executable-verify))
 
 (defparameter *skill-executable-character-limit* 32768
@@ -33,7 +35,10 @@
              :documentation "Sidecar pathname associated with the failure.")
    (cause :initarg :cause :initform nil :reader skill-executable-error-cause
           :type          (or null condition)
-          :documentation "Underlying condition, when available."))
+          :documentation "Underlying condition, when available.")
+   (diagnostic :initarg :diagnostic :initform nil :reader skill-executable-error-diagnostic
+               :type          (or null skill-diagnostic)
+               :documentation "Exact source rediscovery diagnostic, when available."))
   (:documentation "An executable skill discovery, authorization or invocation failure."))
 
 (defclass skill-executable ()
@@ -242,3 +247,58 @@ load an ASDF definition, resolve an entrypoint, or grant declared authority."
                    (string= (skill-source-digest text) (skill-executable-digest executable)))
         (skill-executable--fail pathname ':identity-changed "The executable declaration changed after discovery.")))
     t))
+
+(-> skill-executable-identity-snapshot (skill-executable) list)
+(defun skill-executable-identity-snapshot (executable)
+  "Return a portable data snapshot of the exact selected source and sidecar."
+  (let ((skill    (skill-executable--skill executable))
+        (manifest (skill-executable-manifest executable)))
+    (list :source         (skill-metadata-pathname skill)
+          :name           (copy-seq (skill-metadata-name skill))
+          :canonical      (skill-metadata-canonical-pathname skill)
+          :root           (skill-metadata-root skill)
+          :root-index     (skill-metadata-root-index skill)
+          :cache-root     (skill-metadata-cache-root skill)
+          :pathname       (namestring (skill-executable-pathname executable))
+          :sidecar        (skill-executable-pathname executable)
+          :sidecar-target (skill-executable--canonical-pathname executable)
+          :digest         (skill-executable-digest executable)
+          :skill-version  (getf manifest :skill-version)
+          :system         (getf manifest :system)
+          :system-version (getf manifest :system-version)
+          :dependencies   (getf manifest :dependencies)
+          :manifest       manifest)))
+
+(-> skill-executable-identity-matches-p (skill-executable list) boolean)
+(defun skill-executable-identity-matches-p (executable snapshot)
+  "Compare EXECUTABLE with an exact previously captured identity SNAPSHOT."
+  (equal snapshot (skill-executable-identity-snapshot executable)))
+
+(-> skill-executable-rediscover (list) skill-executable)
+(defun skill-executable-rediscover (snapshot)
+  "Revalidate the selected source and sidecar in SNAPSHOT without loading code.
+Signal :IDENTITY-CHANGED if the exact declaration cannot be recovered."
+  (multiple-value-bind (skill diagnostic)
+      (skill-metadata-discover (getf snapshot :source) (getf snapshot :root)
+                               :root-index (getf snapshot :root-index)
+                               :cache-root (getf snapshot :cache-root))
+    (let* ((cause      nil)
+           (executable (and skill
+                            (handler-case (skill-executable-discover skill)
+                              (skill-executable-error (condition)
+                                (setf cause condition)
+                                nil)))))
+      (unless (and executable (skill-executable-identity-matches-p executable snapshot))
+        (error 'skill-executable-error
+               :pathname   (getf snapshot :sidecar)
+               :kind       ':identity-changed
+               :cause      cause
+               :diagnostic diagnostic
+               :message    (cond
+                            (diagnostic
+                             (skill-diagnostic-message diagnostic))
+                            (cause
+                             (skill-error-message cause))
+                            (t
+                             "Selected skill source or executable identity changed."))))
+      executable)))

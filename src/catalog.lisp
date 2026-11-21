@@ -1,5 +1,22 @@
 (in-package #:cl-skills)
 
+(-> skill-catalog-select-diagnostics (skill-catalog &key (:exclude-kinds list)) list)
+(defun skill-catalog-select-diagnostics (catalog &key exclude-kinds)
+  "Return CATALOG's diagnostics in discovery order, excluding the requested kinds."
+  (remove-if (lambda (diagnostic) (member (skill-diagnostic-kind diagnostic) exclude-kinds))
+             (skill-catalog-diagnostics catalog)))
+
+(-> skill-diagnostic-counts (list) list)
+(defun skill-diagnostic-counts (diagnostics)
+  "Count DIAGNOSTICS by kind in first-seen order."
+  (let ((counts nil))
+    (dolist (diagnostic diagnostics (nreverse counts))
+      (let* ((kind  (skill-diagnostic-kind diagnostic))
+             (entry (assoc kind counts)))
+        (if entry
+            (incf (rest entry))
+            (push (cons kind 1) counts))))))
+
 (-> skill--parse-source-definition
     (pathname
      &key (:instruction-character-limit (integer 1))

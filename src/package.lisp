@@ -39,11 +39,14 @@
    #:skill-catalog-render-error-character-budget
    #:skill-catalog-render-error-minimum-required
    #:skill-catalog-skills
+   #:skill-catalog-select-diagnostics
    #:skill-diagnostic
+   #:skill-diagnostic-counts
    #:skill-diagnostic-kind
    #:skill-diagnostic-message
    #:skill-diagnostic-pathname
    #:skill-diagnostic-root-index
+   #:skill-directory-source-pathname
    #:skill-metadata
    #:skill-metadata-cache-root
    #:skill-metadata-canonical-pathname

@@ -10,10 +10,14 @@
             cl-skills:skill-executable-digest
             cl-skills:skill-executable-discover
             cl-skills:skill-executable-error
+            cl-skills:skill-executable-error-diagnostic
             cl-skills:skill-executable-error-kind
             cl-skills:skill-executable-error-pathname
+            cl-skills:skill-executable-identity-matches-p
+            cl-skills:skill-executable-identity-snapshot
             cl-skills:skill-executable-invoke
             cl-skills:skill-executable-manifest
+            cl-skills:skill-executable-rediscover
             cl-skills:skill-executable-verify)))
 
 (defvar *executable-call-count* 0
@@ -348,12 +352,40 @@
         (ensure-directories-exist (uiop:ensure-directory-pathname sidecar))
         (tests--executable-failure ':not-regular-file (lambda () (skill-executable-discover skill)))))))
 
+(-> test-executable-rediscovery () t)
+(defun test-executable-rediscovery ()
+  "Revalidate the exact selected source and declaration without a loader."
+  (with-test-root (root)
+    (let* ((skill    (tests--executable-skill root))
+           (source   (cl-skills:skill-metadata-pathname skill))
+           (sidecar  (merge-pathnames "echo/EXECUTABLE.sexp" root))
+           (snapshot (skill-executable-identity-snapshot (skill-executable-discover skill))))
+      (test-assert (skill-executable-identity-matches-p
+                    (skill-executable-rediscover snapshot) snapshot)
+                   "Unchanged exact metadata rediscoverable.")
+      (tests--write root "echo/EXECUTABLE.sexp" (tests--executable-form :skill-version "2.0.0"))
+      (tests--executable-failure ':identity-changed (lambda () (skill-executable-rediscover snapshot)))
+      (delete-file sidecar)
+      (tests--executable-failure ':identity-changed (lambda () (skill-executable-rediscover snapshot)))
+      (tests--write root "echo/EXECUTABLE.sexp" (tests--executable-form))
+      (let ((renamed (merge-pathnames "echo/RENAMED.sexp" root)))
+        (rename-file source renamed)
+        (tests--executable-failure ':identity-changed (lambda () (skill-executable-rediscover snapshot)))
+        (uiop:run-program (list "ln" "-s" (namestring renamed) (namestring source)))
+        (tests--executable-failure ':identity-changed (lambda () (skill-executable-rediscover snapshot)))
+        (delete-file source))
+      (handler-case
+          (progn (skill-executable-rediscover snapshot) (test-assert nil "Missing source accepted."))
+        (skill-executable-error (condition)
+          (test-assert (eq ':identity-changed (skill-executable-error-kind condition)) "Exact source is required.")
+          (test-assert (skill-executable-error-diagnostic condition) "Missing source retains diagnostic."))))))
+
 (-> run-executable-tests () boolean)
 (defun run-executable-tests ()
   "Run optional executable Skill behavior and actual callable tests."
   (let ((*test-count* 0))
     (mapc #'funcall '(test-executable-discovery test-executable-rejections
                       test-executable-invocation test-executable-identity test-executable-systems
-                      test-executable-boundaries test-executable-confinement))
+                      test-executable-boundaries test-executable-confinement test-executable-rediscovery))
     (format t "~D executable cl-skills assertions passed.~%" *test-count*)
     t))
