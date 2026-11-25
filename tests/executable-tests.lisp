@@ -1,21 +1,5 @@
 (in-package #:cl-skills/tests)
 
-;; cl-skills/executable exports these symbols only when it loads, after the
-;; test package exists, so the executable tests import them here.
-(eval-when (:compile-toplevel :load-toplevel :execute)
-  (import '(cl-skills:*skill-executable-character-limit*
-            cl-skills:*skill-executable-depth-limit*
-            cl-skills:*skill-executable-node-limit*
-            cl-skills:skill-executable
-            cl-skills:skill-executable-digest
-            cl-skills:skill-executable-discover
-            cl-skills:skill-executable-error
-            cl-skills:skill-executable-error-kind
-            cl-skills:skill-executable-error-pathname
-            cl-skills:skill-executable-invoke
-            cl-skills:skill-executable-manifest
-            cl-skills:skill-executable-verify)))
-
 (defvar *executable-call-count* 0
   "Calls executed by the invocation fixture.")
 
@@ -348,11 +332,27 @@
         (ensure-directories-exist (uiop:ensure-directory-pathname sidecar))
         (tests--executable-failure ':not-regular-file (lambda () (skill-executable-discover skill)))))))
 
+(-> test-executable-package-reload () t)
+(defun test-executable-package-reload ()
+  "Reload the canonical package after the executable API without package variance."
+  (handler-bind ((warning #'error))
+    (load (asdf:system-relative-pathname "cl-skills" "src/package.lisp")
+          :verbose nil :print nil))
+  (dolist (name '("*SKILL-EXECUTABLE-CHARACTER-LIMIT*"
+                  "*SKILL-EXECUTABLE-DEPTH-LIMIT*" "*SKILL-EXECUTABLE-NODE-LIMIT*"
+                  "SKILL-EXECUTABLE" "SKILL-EXECUTABLE-DIGEST" "SKILL-EXECUTABLE-DISCOVER"
+                  "SKILL-EXECUTABLE-ERROR" "SKILL-EXECUTABLE-ERROR-CAUSE"
+                  "SKILL-EXECUTABLE-ERROR-KIND" "SKILL-EXECUTABLE-ERROR-PATHNAME"
+                  "SKILL-EXECUTABLE-INVOKE" "SKILL-EXECUTABLE-MANIFEST"
+                  "SKILL-EXECUTABLE-PATHNAME" "SKILL-EXECUTABLE-VERIFY"))
+    (test-assert (eq (nth-value 1 (find-symbol name "CL-SKILLS")) :external)
+                 "Executable API symbols remain exported after package reload.")))
+
 (-> run-executable-tests () boolean)
 (defun run-executable-tests ()
   "Run optional executable Skill behavior and actual callable tests."
   (let ((*test-count* 0))
-    (mapc #'funcall '(test-executable-discovery test-executable-rejections
+    (mapc #'funcall '(test-executable-package-reload test-executable-discovery test-executable-rejections
                       test-executable-invocation test-executable-identity test-executable-systems
                       test-executable-boundaries test-executable-confinement))
     (format t "~D executable cl-skills assertions passed.~%" *test-count*)

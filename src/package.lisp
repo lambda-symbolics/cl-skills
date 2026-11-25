@@ -20,6 +20,9 @@
    #:*skill-catalog-description-character-limit*
    #:*skill-description-character-limit*
    #:*skill-discovery-character-limit*
+   #:*skill-executable-character-limit*
+   #:*skill-executable-depth-limit*
+   #:*skill-executable-node-limit*
    #:*skill-file-character-limit*
    #:*skill-form-depth-limit*
    #:*skill-form-node-limit*
@@ -44,6 +47,17 @@
    #:skill-diagnostic-message
    #:skill-diagnostic-pathname
    #:skill-diagnostic-root-index
+   #:skill-executable
+   #:skill-executable-digest
+   #:skill-executable-discover
+   #:skill-executable-error
+   #:skill-executable-error-cause
+   #:skill-executable-error-kind
+   #:skill-executable-error-pathname
+   #:skill-executable-invoke
+   #:skill-executable-manifest
+   #:skill-executable-pathname
+   #:skill-executable-verify
    #:skill-metadata
    #:skill-metadata-cache-root
    #:skill-metadata-canonical-pathname
