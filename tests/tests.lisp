@@ -170,11 +170,14 @@
 (defun test-native-validation ()
   "Test native syntax, shape, bounds, and reader safety."
   (with-test-root (root)
+    (tests--write root "extra/SKILL.sexp"
+                  "(:autolith-skill :version 1 :name \"extra\" :description \"A skill.\" :extension (:enabled 1) :instructions \"Body\")")
+    (let ((skill (skill-catalog-find (skill-catalog-discover (list root)) "extra")))
+      (test-assert (and skill (string= (skill-metadata-read skill) "Body"))
+                   "a native skill can have extra fields"))
     (let ((cases
             `((:missing-field
                "(:autolith-skill :version 1 :name \"x\" :description \"d\")")
-              (:unknown-field
-               "(:autolith-skill :version 1 :name \"x\" :description \"d\" :instructions \"i\" :extra t)")
               (:duplicate-field
                "(:autolith-skill :version 1 :name \"x\" :name \"y\" :description \"d\" :instructions \"i\")")
               (:invalid-version
@@ -372,12 +375,12 @@
 
 (-> test-standard-validation () t)
 (defun test-standard-validation ()
-  "Test strict YAML frontmatter, names, fields, and exact bodies."
+  "Test that standard skills ignore extra YAML fields and preserve the Markdown body."
   (with-test-root (root)
     (let ((body (format nil "# Instructions~2%Preserve  two spaces.~%")))
       (tests--write root "valid-skill/SKILL.md"
                     (format nil
-                            "---~%name: valid-skill~%description: A valid standard skill.~%license: COLL-Attribution~%compatibility: SBCL~%metadata:~%  owner: lambda-symbolics~%allowed-tools: read write~%---~%~A"
+                            "---~%name: valid-skill~%description: A valid standard skill.~%license: COLL-Attribution~%compatibility: SBCL~%metadata:~%  owner: lambda-symbolics~%allowed-tools: read write~%extension:~%  enabled: true~%---~%~A"
                             body))
       (let* ((catalog  (skill-catalog-discover (list root)))
              (metadata (skill-catalog-find catalog "valid-skill")))
@@ -391,8 +394,6 @@
                ,(format nil "name: absent-boundaries~%description: bad~%"))
               (:invalid-syntax "unclosed/SKILL.md"
                ,(format nil "---~%name: unclosed~%description: bad~%"))
-              (:unknown-field "unknown/SKILL.md"
-               ,(format nil "---~%name: unknown~%description: bad~%surprise: true~%---~%Body"))
               (:missing-field "no-name/SKILL.md"
                ,(format nil "---~%description: no-name~%---~%Body"))
               (:invalid-name "uppercase/SKILL.md"

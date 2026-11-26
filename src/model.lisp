@@ -39,9 +39,8 @@
 (defparameter *skill-catalog-description-character-limit* 200
   "The default maximum characters of one description in a rendered catalog.")
 
-(defparameter *skill-native-keywords*
-  '(:autolith-skill :version :name :description :instructions)
-  "The complete keyword vocabulary accepted by native skill forms.")
+(defparameter *skill-native-keywords* nil
+  "The accepted keywords in native skill forms, or NIL to accept any keyword.")
 
 (defvar *skill-definition-source-character-count* 0
   "Characters read while validating the dynamically active skill definition.")

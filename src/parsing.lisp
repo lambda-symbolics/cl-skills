@@ -257,16 +257,10 @@ COMMON-LISP from the reader package keeps a bare symbol from naming anything."
                   "SKILL.sexp contains a field without a value."))
                (let ((key   (first fields))
                      (value (second fields)))
-                 (unless (member key
-                                 '(:version
-                                   :name
-                                   :description
-                                   :instructions)
-                                 :test #'eq)
+                 (unless (keywordp key)
                    (skill--definition-fail
-                    :unknown-field
-                    "SKILL.sexp contains unknown field ~S."
-                    key))
+                    :invalid-structure
+                    "SKILL.sexp field names must be keywords."))
                  (multiple-value-bind (present-value present-p)
                      (gethash key values)
                    (declare (ignore present-value))
@@ -336,10 +330,6 @@ COMMON-LISP from the reader package keeps a bare symbol from naming anything."
 
 
 ;;;; -- Agent Skills Conversion --
-
-(defparameter *skill-agent-frontmatter-fields*
-  '("name" "description" "license" "compatibility" "metadata" "allowed-tools")
-  "The complete top-level YAML field vocabulary accepted from SKILL.md.")
 
 (-> skill-source-digest (string) string)
 (defun skill-source-digest (source)
@@ -488,18 +478,6 @@ COMMON-LISP from the reader package keeps a bare symbol from naming anything."
     (skill--definition-fail
      :invalid-structure
      "SKILL.md YAML frontmatter must be a mapping."))
-  (maphash
-   (lambda (field value)
-     (declare (ignore value))
-     (unless (and (stringp field)
-                  (member field
-                          *skill-agent-frontmatter-fields*
-                          :test #'string=))
-       (skill--definition-fail
-        :unknown-field
-        "SKILL.md contains unknown frontmatter field ~S."
-        field)))
-   frontmatter)
   (dolist (field '("license" "compatibility" "allowed-tools"))
     (multiple-value-bind (value present-p)
         (gethash field frontmatter)

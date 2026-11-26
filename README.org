@@ -80,7 +80,8 @@ Invalid source signals =SKILL-VALIDATION-ERROR= with =KIND= and =PATHNAME= reade
 A standard Skill is an exact case-sensitive =SKILL.md= file. It must begin
 with YAML frontmatter bounded by exact =---= lines. =name= and =description=
 are required. The optional standard fields are =license=, =compatibility=,
-=metadata=, and =allowed-tools=. Unknown and duplicate fields are rejected.
+=metadata=, and =allowed-tools=. Unknown fields are ignored. Duplicate fields
+are rejected.
 The name must satisfy the Agent Skills naming rules and match its parent
 directory. The Markdown body is preserved exactly and may be empty.
 
@@ -95,8 +96,8 @@ data-only form:
  :instructions "Read the changelog and summarize user-visible changes.")
 #+end_src
 
-Native forms reject reader evaluation, unknown or duplicate fields, improper
-structure, excess depth, and excess node count.
+Unknown fields are ignored. Native forms reject reader evaluation, duplicate
+fields, improper structure, excess depth, and excess node count.
 
 * Conversion cache
 
